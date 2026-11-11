@@ -2,7 +2,7 @@
 
 Aplicativo nativo experimental para iPhone 11: abre https://brasa.poker/ usando WKWebView e exibe um painel flutuante, sem mexer na interface original da mesa.
 
-## v0.4 — Leitor diagnóstico + treino
+## v0.5 — Assistente de 3 cores + leitor diagnóstico + treino
 
 - Painel flutuante mais compacto (altura máxima de 360 pontos) e com rolagem.
 - **Inspecionar HTML:** busca apenas candidatos a cartas no conteúdo visível e conta Canvas, SVG, imagens IMG, fundos CSS e iframes. Isso não é reconhecimento confirmado.
@@ -22,3 +22,10 @@ Abra Actions → Build BrasaAssisten unsigned IPA → Run workflow. Após execu�
 Não existe leitura automática **confiável** da mesa Brasa (cartas, posição, ações e apostas). Tokens detectados por HTML/OCR são candidatos não verificados; eles NÃO alimentam o motor de treino. O projeto não possui modelo de linguagem ou recomendações automáticas de aposta, não conhece cartas escondidas e não transmite conteúdo da página para servidores próprios. O cálculo offline assume mãos aleatórias e não prevê comportamento humano.
 
 Respeite as regras da plataforma, especialmente nas partidas com dinheiro real. Projeto independente e não afiliado ao Brasa Poker.
+
+## Assistente de sinais v0.5
+
+No painel, há três faixas: VERMELHO (fraca), AMARELO (cautela), VERDE (forte), com explicação e uma ação básica pré-flop. Insira sua mão (ex. Ke 10a) e, se houver, as comunitárias (ex. 5c Je 6d). O app classifica imediatamente, sem depender de serviços de IA.
+A leitura automática do HTML roda a cada 3 segundos e exibe candidatos somente após duas leituras iguais; NÃO considera essas cartas confirmadas. Toque em "Confirmar essas duas cartas" quando a correspondência com a mesa estiver correta. Em mesas onde o Brasa não expõe cartas no HTML, use a entrada manual. O app não possui análise automática confiável de apostas, adversários ou probabilidades individuais de vitória e não executa ações no site.
+
+Os sinais são heurísticas básicas de estudo em partidas fictícias e NÃO substituem avaliação do tamanho da aposta, posição e range. Nenhuma situação de aposta deve ser decidida só pelo sinal de cor.
