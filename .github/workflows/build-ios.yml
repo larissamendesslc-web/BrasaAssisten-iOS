@@ -57,6 +57,12 @@ jobs:
           set -euo pipefail
           swiftc BrasaAssisten/PokerEngine.swift Tests/main.swift -o /tmp/brasa-engine-tests
           /tmp/brasa-engine-tests
+      - name: Verify three-color advice with Swift tests
+        run: |
+          set -euo pipefail
+          cp Tests/decisionMain.swift /tmp/main.swift
+          swiftc BrasaAssisten/PokerEngine.swift BrasaAssisten/DecisionEngine.swift /tmp/main.swift -o /tmp/brasa-advice-tests
+          /tmp/brasa-advice-tests
       - name: Generate project
         run: xcodegen generate --spec project.yml
       - name: Build for physical iPhone without signing
@@ -82,16 +88,16 @@ jobs:
           mkdir -p output/Payload
           ditto "$APP" output/Payload/BrasaAssisten.app
           cd output
-          zip -qry -X ../BrasaAssisten-v0.2-unsigned.ipa Payload
+          zip -qry -X ../BrasaAssisten-v0.5-unsigned.ipa Payload
           cd ..
-          unzip -t BrasaAssisten-v0.2-unsigned.ipa | tail -2
-          shasum -a 256 BrasaAssisten-v0.2-unsigned.ipa > BrasaAssisten-v0.2-unsigned.sha256
+          unzip -t BrasaAssisten-v0.5-unsigned.ipa | tail -2
+          shasum -a 256 BrasaAssisten-v0.5-unsigned.ipa > BrasaAssisten-v0.5-unsigned.sha256
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: BrasaAssisten-IPA-KSign
           path: |
-            BrasaAssisten-v0.2-unsigned.ipa
-            BrasaAssisten-v0.2-unsigned.sha256
+            BrasaAssisten-v0.5-unsigned.ipa
+            BrasaAssisten-v0.5-unsigned.sha256
           retention-days: 30
           if-no-files-found: error
