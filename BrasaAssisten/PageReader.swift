@@ -23,6 +23,9 @@ final class PageReader: ObservableObject {
     @Published var boardRankHints:[String]=[]
     @Published var boardNeedsReview=false
     @Published var liveStatus="Aguardando cartas"
+    @Published var handSerial=0
+    @Published var streetLabel="Pré-flop"
+    private var handSession=HandSession()
     private var scanPending=false
     private var pendingSnapshotKey=""
     private var stableSamples=0
@@ -182,15 +185,39 @@ final class PageReader: ObservableObject {
             else {self.pendingSnapshotKey=key;self.stableSamples=1}
             // Two equal samples are normally taken ~0.6 sec apart.
             guard self.stableSamples>=2 else {return}
-            self.liveTokens=hero
-            self.liveBoard=board
-            self.liveSource=source
+            guard let parsedHero=PokerEngine.parseCards(hero.joined(separator:" ")),
+                  let parsedBoard=PokerEngine.parseCards(board.joined(separator:" ")) else {
+                self.liveTokens=[]
+                self.liveBoard=[]
+                self.boardNeedsReview=true
+                self.liveStatus="Leitura inválida, aguardando cartas novas."
+                return
+            }
+            let change=self.handSession.ingest(hero:parsedHero, board:parsedBoard, uncertain:pending)
             self.boardRankHints=hints
-            self.boardNeedsReview=pending
-            self.liveStatus=board.count>0
-              ? "Mesa: \(board.count) cartas detectadas (prévia)"
-              : pending ? "Mesa presente, mas naipes ainda não identificados."
-                        : "Mão detectada (prévia)"
+            self.liveSource=source
+            self.handSerial=self.handSession.serial
+            self.streetLabel=self.handSession.street.rawValue
+            switch change {
+            case .newHand, .advanced, .unchanged:
+                self.liveTokens=hero
+                self.liveBoard=board
+                self.boardNeedsReview=self.handSession.boardUncertain
+                self.liveStatus=self.boardNeedsReview
+                  ? "Comunitárias incompletas. Aguarde ou corrija."
+                  : board.isEmpty ? "Pré-flop detectado (prévia)"
+                    : "\(self.streetLabel): \(board.count) cartas (prévia)"
+            case .boardUncertain:
+                self.liveTokens=hero
+                self.liveBoard=[]
+                self.boardNeedsReview=true
+                self.liveStatus="A mesa mudou, mas as cartas não estão confirmadas."
+            case .invalid, .awaiting:
+                self.liveTokens=[]
+                self.liveBoard=[]
+                self.boardNeedsReview=true
+                self.liveStatus="Leitura inválida."
+            }
         }
     }
 
