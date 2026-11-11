@@ -159,10 +159,24 @@ final class PageReader: ObservableObject {
         webView.evaluateJavaScript(script) { [weak self] result,error in
             guard let self else {return}
             self.scanPending=false
-            guard error == nil, let data=result as? [String:Any] else {
+            if let error = error {
                 self.pendingSnapshotKey=""
                 self.stableSamples=0
-                self.liveStatus="Leitura indisponível"
+                self.liveTokens=[]
+                self.liveBoard=[]
+                self.boardNeedsReview=true
+                self.liveStatus="Erro no scanner — veja diagnóstico"
+                self.diagnosticReport="Erro JavaScript: " + error.localizedDescription
+                return
+            }
+            guard let data=result as? [String:Any] else {
+                self.pendingSnapshotKey=""
+                self.stableSamples=0
+                self.liveTokens=[]
+                self.liveBoard=[]
+                self.boardNeedsReview=true
+                self.liveStatus="Resposta inesperada do scanner"
+                self.diagnosticReport="O scanner retornou um formato inesperado."
                 return
             }
             let hero=data["hero"] as? [String] ?? []
