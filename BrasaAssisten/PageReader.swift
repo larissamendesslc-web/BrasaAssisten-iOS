@@ -17,6 +17,43 @@ final class PageReader: ObservableObject {
     @Published var cssBackgroundCount=0
     @Published var frameCount=0
     @Published var rankClues:[String]=[]
+    @Published var liveTokens:[String]=[]
+    private var previousReadKey = ""
+    private var repeatCount = 0
+    private var scanPending = false
+
+    // Cheap continuous scan: no screenshots or storage; only potential visible text tokens.
+    // Requires two consecutive identical reads before publishing any candidates.
+    func quickScan(_ webView:WKWebView) {
+        guard !scanPending, isBrasa(webView.url) else { return }
+        scanPending = true
+        let script = #"""
+        (() => {
+            const text = (document.body?.innerText || '').slice(0,12000);
+            const attrs = Array.from(document.querySelectorAll('[aria-label],[title],img[alt]'))
+              .slice(0,250)
+              .map(e=>[e.getAttribute('aria-label'),e.getAttribute('title'),e.getAttribute('alt')].filter(Boolean).join(' '))
+              .join(' ');
+            const hits = (text+' '+attrs).match(/(?:10|[2-9AJQK])\s*[♠♣♥♦]/gi)||[];
+            return [...new Set(hits.map(x=>x.replace(/\s+/g,'').toUpperCase()))].slice(0,8);
+        })()
+        """#
+        webView.evaluateJavaScript(script) { [weak self] result, error in
+            guard let self else { return }
+            self.scanPending = false
+            guard error == nil, let tokens=result as? [String], tokens.count == 2 else {
+                self.previousReadKey = ""
+                self.repeatCount = 0
+                self.liveTokens = []
+                return
+            }
+            let key=tokens.joined(separator:"|")
+            if key == self.previousReadKey { self.repeatCount += 1 }
+            else { self.previousReadKey=key;self.repeatCount=1;self.liveTokens=[] }
+            if self.repeatCount >= 2 { self.liveTokens=tokens }
+        }
+    }
+
 
     private func isBrasa(_ url:URL?) -> Bool {
         guard let host=url?.host?.lowercased() else {return false}
