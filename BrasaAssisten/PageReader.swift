@@ -22,6 +22,8 @@ final class PageReader: ObservableObject {
     @Published var liveSource="nenhuma"
     @Published var observing=true
     @Published var observedPot=""
+    @Published var amountToCall=""
+    @Published var visibleShowdown:[[String]]=[]
     @Published var boardRankHints:[String]=[]
     @Published var boardNeedsReview=false
     @Published var liveStatus="Aguardando cartas"
@@ -68,6 +70,8 @@ final class PageReader: ObservableObject {
             let uncertain=data["uncertain"] as? Bool ?? false
             let info=data["diagnostics"] as? String ?? ""
             let pot=data["pot"] as? String ?? ""
+            let callAmount=data["toCall"] as? String ?? ""
+            let exposed=data["revealed"] as? [[String]] ?? []
             guard [0,2].contains(hero.count), [0,3,4,5].contains(board.count),
                   let parsedHero=PokerEngine.parseCards(hero.joined(separator:" ")),
                   let parsedBoard=PokerEngine.parseCards(board.joined(separator:" ")),
@@ -91,6 +95,8 @@ final class PageReader: ObservableObject {
             self.liveSource=source
             self.observing=self.tableSession.spectating
             self.observedPot=pot
+            self.amountToCall=callAmount
+            self.visibleShowdown=exposed
             self.boardRankHints=hints
             self.streetLabel=self.tableSession.streetLabel
             self.handSerial=self.tableSession.serial
@@ -118,6 +124,8 @@ final class PageReader: ObservableObject {
                 "Valores candidatos: "+hints.joined(separator:" "),
                 "Leitura incerta: "+String(self.boardNeedsReview),
                 "Pote exibido: "+pot,
+                "Valor de pagar exibido: "+callAmount,
+                "Pares visíveis após revelação: "+String(exposed.count),
                 "Mudança: "+changed.rawValue,
                 "Elementos: "+info
             ].joined(separator:"\n")
