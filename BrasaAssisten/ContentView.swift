@@ -140,6 +140,10 @@ struct ContentView: View {
         .onReceive(Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()) { _ in
             reader.quickScan(browser.webView)
         }
+        .onReceive(browser.$domRevision.removeDuplicates()
+            .debounce(for: .milliseconds(230), scheduler: RunLoop.main)) { _ in
+            reader.quickScan(browser.webView)
+        }
         .onChange(of: reader.handSerial) { _ in
             // A new hand invalidates any manually confirmed cards from the
             // previous hand. This avoids stale green/red classifications.
