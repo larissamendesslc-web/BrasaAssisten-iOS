@@ -38,3 +38,12 @@ Os sinais são heurísticas básicas de estudo em partidas fictícias e NÃO sub
 - A análise atualiza automaticamente quando o leitor reconhece flop, turn e river; permite correção manual dos dados, sem sobrepor o conteúdo do site.
 - Em nova mão identificada, apaga correções antigas e recupera a análise automática. Correções manuais de cartas da mesa podem ser abandonadas quando novas cartas identificadas as estenderem.
 - **Limite:** o DOM do Brasa não foi inspecionado por uma sessão de debug no aparelho. Alguns naipes desenhados em SVG/imagens podem não ser extraídos por esse leitor e exigir reconhecimento visual específico. NÃO apresentamos extração automática de comunitárias como validada.
+
+## v0.7 — Segurança contra análises atrasadas
+
+- Novo HandSession guarda o estado da mão em pré-flop/flop/turn/river, aceita apenas avanço consistente das comunitárias, isola a mão seguinte e interrompe prévias quando as cartas da mesa são incertas.
+- Ao começar uma mão nova identificada, as correções manuais antigas são descartadas automaticamente.
+- O scanner de texto evita operações caras no DOM para nós que não se parecem com cartas.
+- O app exibe o nome da etapa e permite **Copiar diagnóstico da leitura**. Esse diagnóstico contém apenas cartas candidatas, posições lógicas/estado e transições; não inclui histórico completo da página, senhas nem capturas de tela.
+- Novo conjunto de testes automáticos em Tests/handSessionMain.swift. A compilação da v0.7 só deverá prosseguir se todos os testes de regressão passarem no GitHub Actions.
+- Ainda é necessário verificar no iPhone a detecção de cartas comunitárias quando o site usa imagens/SVG: melhorias na lógica de estado não provam reconhecimento visual completo.
