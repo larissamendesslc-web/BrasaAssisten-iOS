@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import UIKit
 
 struct ContentView: View {
     @StateObject private var browser = BrasaBrowser()
@@ -230,6 +231,14 @@ struct ContentView: View {
                 }.buttonStyle(.bordered)
             }
             Text(reader.liveStatus).font(.caption2).foregroundStyle(.secondary)
+            Button {
+                UIPasteboard.general.string=reader.diagnosticReport
+            } label: {
+                Label("Copiar diagnóstico da leitura", systemImage:"doc.on.clipboard")
+                    .font(.caption2)
+            }
+            .buttonStyle(.bordered)
+            .disabled(reader.diagnosticReport == "Nenhum diagnóstico registrado.")
             Text("Você pode corrigir cartas manualmente. Sem confirmação, o sinal é só uma prévia.")
                 .font(.caption2).foregroundStyle(.secondary)
             HStack(spacing: 8) {
