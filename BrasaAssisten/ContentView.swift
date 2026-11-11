@@ -111,7 +111,7 @@ struct ContentView: View {
                 .font(.subheadline)
             HStack(spacing: 8) {
                 Image(systemName: "info.circle").foregroundStyle(gold)
-                Text("Leitura de cartas e análises automáticas ainda não estão implementadas. Este é o protótipo funcional do navegador e overlay.")
+                Text("Leitura de cartas ainda não validada. Use os testes abaixo na mesa fictícia. O resultado é diagnóstico, não indicação de aposta.")
                     .font(.footnote)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -126,16 +126,18 @@ struct ContentView: View {
                     .buttonStyle(.bordered).disabled(reader.isBusy)
             }.font(.caption)
             Text(reader.status).font(.footnote).fixedSize(horizontal: false, vertical: true)
-            if reader.canvasCount > 0 || reader.svgCount > 0 {
-                Text("Elementos: \(reader.canvasCount) Canvas • \(reader.svgCount) SVG")
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
+            Text("Elementos: \(reader.canvasCount) Canvas • \(reader.svgCount) SVG • \(reader.imgCount) imagens • \(reader.cssBackgroundCount) fundos CSS • \(reader.frameCount) iframes")
+                .font(.caption2).foregroundStyle(.secondary)
             if !reader.domTokens.isEmpty {
                 Text("Candidatos HTML: " + reader.domTokens.joined(separator: "  "))
                     .font(.caption2).foregroundStyle(.orange)
             }
             if !reader.imageTokens.isEmpty {
-                Text("Candidatos OCR: " + reader.imageTokens.joined(separator: "  "))
+                Text("Candidatos OCR (com naipe): " + reader.imageTokens.joined(separator: "  "))
+                    .font(.caption2).foregroundStyle(.orange)
+            }
+            if !reader.rankClues.isEmpty {
+                Text("Pistas de valores no rodapé: " + reader.rankClues.joined(separator: "  "))
                     .font(.caption2).foregroundStyle(.orange)
             }
             Text("Cartas listadas acima são candidatos, não identificações verificadas. Não use este teste para decidir apostas.")
