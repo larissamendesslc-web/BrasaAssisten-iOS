@@ -74,6 +74,18 @@ jobs:
           cp Tests/handSessionMain.swift /tmp/main.swift
           swiftc BrasaAssisten/PokerEngine.swift BrasaAssisten/HandSession.swift /tmp/main.swift -o /tmp/brasa-session-tests
           /tmp/brasa-session-tests
+      - name: Verify spectator and visible table state
+        run: |
+          set -euo pipefail
+          cp Tests/tableSessionMain.swift /tmp/main.swift
+          swiftc BrasaAssisten/PokerEngine.swift BrasaAssisten/TableSession.swift /tmp/main.swift -o /tmp/brasa-table-session
+          /tmp/brasa-table-session
+          cp Tests/tableInsightsMain.swift /tmp/main.swift
+          swiftc BrasaAssisten/PokerEngine.swift BrasaAssisten/TableInsights.swift /tmp/main.swift -o /tmp/brasa-spectator-insights
+          /tmp/brasa-spectator-insights
+          cp Tests/potMathMain.swift /tmp/main.swift
+          swiftc BrasaAssisten/PotMath.swift /tmp/main.swift -o /tmp/brasa-potmath
+          /tmp/brasa-potmath
       - name: Generate project
         run: xcodegen generate --spec project.yml
       - name: Build for physical iPhone without signing
@@ -99,16 +111,16 @@ jobs:
           mkdir -p output/Payload
           ditto "$APP" output/Payload/BrasaAssisten.app
           cd output
-          zip -qry -X ../BrasaAssisten-v0.8-unsigned.ipa Payload
+          zip -qry -X ../BrasaAssisten-v0.9-unsigned.ipa Payload
           cd ..
-          unzip -t BrasaAssisten-v0.8-unsigned.ipa | tail -2
-          shasum -a 256 BrasaAssisten-v0.8-unsigned.ipa > BrasaAssisten-v0.8-unsigned.sha256
+          unzip -t BrasaAssisten-v0.9-unsigned.ipa | tail -2
+          shasum -a 256 BrasaAssisten-v0.9-unsigned.ipa > BrasaAssisten-v0.9-unsigned.sha256
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: BrasaAssisten-IPA-KSign
           path: |
-            BrasaAssisten-v0.8-unsigned.ipa
-            BrasaAssisten-v0.8-unsigned.sha256
+            BrasaAssisten-v0.9-unsigned.ipa
+            BrasaAssisten-v0.9-unsigned.sha256
           retention-days: 30
           if-no-files-found: error
