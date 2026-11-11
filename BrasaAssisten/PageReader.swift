@@ -18,42 +18,181 @@ final class PageReader: ObservableObject {
     @Published var frameCount=0
     @Published var rankClues:[String]=[]
     @Published var liveTokens:[String]=[]
-    private var previousReadKey = ""
-    private var repeatCount = 0
-    private var scanPending = false
+    @Published var liveBoard:[String]=[]
+    @Published var liveSource="nenhuma"
+    @Published var boardRankHints:[String]=[]
+    @Published var boardNeedsReview=false
+    @Published var liveStatus="Aguardando cartas"
+    private var scanPending=false
+    private var pendingSnapshotKey=""
+    private var stableSamples=0
 
-    // Cheap continuous scan: no screenshots or storage; only potential visible text tokens.
-    // Requires two consecutive identical reads before publishing any candidates.
+    // Fast, local, read-only scan; never reads network calls, private state,
+    // cookies, passwords or hidden opponent cards.
+    // The mini-card display near the TOP is considered the main source of
+    // the user's cards. Community cards come from the MIDDLE of the viewport.
     func quickScan(_ webView:WKWebView) {
         guard !scanPending, isBrasa(webView.url) else { return }
-        scanPending = true
+        scanPending=true
         let script = #"""
         (() => {
-            const text = (document.body?.innerText || '').slice(0,12000);
-            const attrs = Array.from(document.querySelectorAll('[aria-label],[title],img[alt]'))
-              .slice(0,250)
-              .map(e=>[e.getAttribute('aria-label'),e.getAttribute('title'),e.getAttribute('alt')].filter(Boolean).join(' '))
-              .join(' ');
-            const hits = (text+' '+attrs).match(/(?:10|[2-9AJQK])\s*[♠♣♥♦]/gi)||[];
-            return [...new Set(hits.map(x=>x.replace(/\s+/g,'').toUpperCase()))].slice(0,8);
+          const W=innerWidth,H=innerHeight;
+          if (!W || !H || !document.body) return {hero:[],board:[],source:"empty",boardHint:[]};
+          const full=/(?:10|[2-9AJQK])\s*[♠♣♥♦]/gi;
+          const rankOnly=/^(?:10|[2-9AJQK])$/i;
+          const suitOnly=/^[♠♣♥♦]$/;
+          const pts=[],ranks=[],suits=[];
+          const isShown=e=>{
+            if (!e || !e.getBoundingClientRect) return false;
+            const r=e.getBoundingClientRect(),style=getComputedStyle(e);
+            return r.width>0 && r.height>0 && style.display!=="none" &&
+                   style.visibility!=="hidden" && r.bottom>0 && r.top<H;
+          };
+          const push=(value,x,y,source)=>{
+            const token=value.toUpperCase().replace(/\s+/g,"");
+            if (!/^(?:10|[2-9AJQK])[♠♣♥♦]$/.test(token)) return;
+            if (x<0 || x>W || y<0 || y>H) return;
+            pts.push({token,x,y,source});
+          };
+          const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+          let node,n=0;
+          while((node=walker.nextNode()) && n++<3200) {
+            const parent=node.parentElement;
+            if (!isShown(parent) || ["SCRIPT","STYLE","NOSCRIPT"].includes(parent.tagName)) continue;
+            const text=node.textContent||"";
+            if (!text.trim() || text.length>100) continue;
+            full.lastIndex=0;
+            let match;
+            while((match=full.exec(text))!==null) {
+              const range=document.createRange();
+              try {
+                range.setStart(node,match.index);
+                range.setEnd(node,match.index+match[0].length);
+                const rect=range.getBoundingClientRect();
+                if(rect.width>0 && rect.height>0)
+                  push(match[0],rect.left+rect.width/2,rect.top+rect.height/2,"text");
+              } catch(_) {}
+            }
+            const clean=text.trim().toUpperCase();
+            if ((rankOnly.test(clean)||suitOnly.test(clean)) && text.length<=6) {
+              const range=document.createRange();
+              range.selectNodeContents(node);
+              const rect=range.getBoundingClientRect();
+              if (rect.width<=0 || rect.height<=0) continue;
+              const point={value:clean,x:rect.left+rect.width/2,y:rect.top+rect.height/2};
+              if(rankOnly.test(clean)) ranks.push(point);
+              else suits.push(point);
+            }
+          }
+          // Cards may split their rank and suit into neighboring text nodes.
+          const usedSuits=new Set();
+          for(const r of ranks){
+            let best=-1,dist=1e6;
+            for(let i=0;i<suits.length;i++){
+              if(usedSuits.has(i))continue;
+              const dx=Math.abs(suits[i].x-r.x),dy=Math.abs(suits[i].y-r.y);
+              if(dx>30 || dy>40)continue;
+              const d=dx+dy*0.8;
+              if(d<dist){dist=d;best=i}
+            }
+            if(best>=0){usedSuits.add(best);push(r.value+suits[best].value,r.x,r.y,"split")}
+          }
+          // Labels and image descriptions may provide card names, independent
+          // of whether the rank is drawn as text or an SVG.
+          const attrEls=document.querySelectorAll('[aria-label],[title],img[alt]');
+          for(let i=0;i<Math.min(attrEls.length,450);i++){
+            const el=attrEls[i];
+            if(!isShown(el)) continue;
+            const label=[el.getAttribute("aria-label"),el.getAttribute("title"),el.getAttribute("alt")].filter(Boolean).join(" ");
+            if(label.length>90) continue;
+            full.lastIndex=0;
+            let m;const rect=el.getBoundingClientRect();
+            while((m=full.exec(label))!==null)push(m[0],rect.left+rect.width/2,rect.top+rect.height/2,"attribute");
+          }
+          // Remove near-duplicates from the same card, not distinct cards.
+          const points=[];
+          pts.sort((a,b)=>a.y-b.y || a.x-b.x);
+          for(const p of pts){
+            if(!points.some(q=>q.token===p.token && Math.abs(q.x-p.x)<25 && Math.abs(q.y-p.y)<26)){
+              points.push(p);
+            }
+          }
+          const heroTop=points.filter(p=>p.y/H<0.19 && p.x/W>0.20 && p.x/W<0.80).sort((a,b)=>a.x-b.x);
+          const heroBottom=points.filter(p=>p.y/H>0.72 && p.x/W>0.28 && p.x/W<0.88).sort((a,b)=>a.x-b.x);
+          const community=points.filter(p=>p.y/H>0.34 && p.y/H<0.70 && p.x/W>0.13 && p.x/W<0.88).sort((a,b)=>a.x-b.x);
+          const distinct=xs=>xs.length===new Set(xs).size;
+          let hero=[],source="not-found";
+          if(heroTop.length===2 && distinct(heroTop.map(p=>p.token))){
+            hero=heroTop.map(p=>p.token);source="top";
+          }else if(heroBottom.length===2 && distinct(heroBottom.map(p=>p.token))){
+            hero=heroBottom.map(p=>p.token);source="bottom";
+          }
+          // Last-resort fallback, useful when the small top banner is one text
+          // node without useful per-card geometry.
+          if(hero.length===0) {
+            const txt=(document.body.innerText||"").slice(0,12000);
+            const matches=(txt.match(/(?:10|[2-9AJQK])\s*[♠♣♥♦]/gi)||[])
+              .map(x=>x.toUpperCase().replace(/\s+/g,""));
+            if(matches.length===2 && distinct(matches)) {
+              hero=matches;source="text-only";
+            }
+          }
+          let board=[];
+          if(community.length>=3 && community.length<=5 && distinct(community.map(p=>p.token))){
+            board=community.map(p=>p.token);
+          }
+          // If three or more ranks are visible in the board's area but their
+          // suits are not resolved, never assume this is still pre-flop.
+          const boardHints=ranks.filter(p=>p.y/H>0.34 && p.y/H<0.70 && p.x/W>0.13 && p.x/W<0.88)
+            .sort((a,b)=>a.x-b.x).map(p=>p.value).slice(0,7);
+          return {hero,board,source,boardHint:boardHints,
+                  boardNeedsReview:board.length===0 && boardHints.length>=3};
         })()
         """#
-        webView.evaluateJavaScript(script) { [weak self] result, error in
-            guard let self else { return }
-            self.scanPending = false
-            guard error == nil, let tokens=result as? [String], tokens.count == 2 else {
-                self.previousReadKey = ""
-                self.repeatCount = 0
-                self.liveTokens = []
+        webView.evaluateJavaScript(script) { [weak self] result,error in
+            guard let self else {return}
+            self.scanPending=false
+            guard error == nil, let data=result as? [String:Any] else {
+                self.pendingSnapshotKey=""
+                self.stableSamples=0
+                self.liveStatus="Leitura indisponível"
                 return
             }
-            let key=tokens.joined(separator:"|")
-            if key == self.previousReadKey { self.repeatCount += 1 }
-            else { self.previousReadKey=key;self.repeatCount=1;self.liveTokens=[] }
-            if self.repeatCount >= 2 { self.liveTokens=tokens }
+            let hero=data["hero"] as? [String] ?? []
+            let board=data["board"] as? [String] ?? []
+            let hints=data["boardHint"] as? [String] ?? []
+            let pending=data["boardNeedsReview"] as? Bool ?? false
+            let source=data["source"] as? String ?? "unknown"
+            let validHero=hero.count==2 && PokerEngine.parseCards(hero.joined(separator:" "))?.count==2
+            let validBoard=[0,3,4,5].contains(board.count)
+            let all=hero+board
+            let validCards=PokerEngine.parseCards(all.joined(separator:" "))?.count == all.count
+            if !validHero || !validBoard || !validCards {
+                self.pendingSnapshotKey=""
+                self.stableSamples=0
+                self.liveTokens=[]
+                self.liveBoard=[]
+                self.boardRankHints=hints
+                self.boardNeedsReview=pending
+                self.liveStatus="Não foi possível validar as cartas."
+                return
+            }
+            let key=hero.joined(separator:"|") + "/" + board.joined(separator:"|") + "/" + String(pending)
+            if self.pendingSnapshotKey == key {self.stableSamples += 1}
+            else {self.pendingSnapshotKey=key;self.stableSamples=1}
+            // Two equal samples are normally taken ~0.6 sec apart.
+            guard self.stableSamples>=2 else {return}
+            self.liveTokens=hero
+            self.liveBoard=board
+            self.liveSource=source
+            self.boardRankHints=hints
+            self.boardNeedsReview=pending
+            self.liveStatus=board.count>0
+              ? "Mesa: \(board.count) cartas detectadas (prévia)"
+              : pending ? "Mesa presente, mas naipes ainda não identificados."
+                        : "Mão detectada (prévia)"
         }
     }
-
 
     private func isBrasa(_ url:URL?) -> Bool {
         guard let host=url?.host?.lowercased() else {return false}
