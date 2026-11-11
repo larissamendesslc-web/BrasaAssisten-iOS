@@ -12,6 +12,7 @@ def embedded(path, pattern):
 
 scanner=embedded("BrasaAssisten/CardScanner.swift", r'static let source = #"""([\s\S]*?)"""#')[0]
 other=embedded("BrasaAssisten/PageReader.swift", r'let script = #"""([\s\S]*?)"""#')
+other+=embedded("BrasaAssisten/BrasaWebView.swift", r'let watchScript = #"""([\s\S]*?)"""#')
 with tempfile.TemporaryDirectory() as folder:
     for idx,code in enumerate([scanner]+other):
         script=Path(folder)/f"scanner-{idx}.js"
