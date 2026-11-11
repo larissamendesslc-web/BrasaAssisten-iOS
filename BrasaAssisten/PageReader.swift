@@ -40,8 +40,12 @@ final class PageReader: ObservableObject {
     func quickScan(_ webView:WKWebView) {
         guard !scanPending, isBrasa(webView.url) else {return}
         scanPending=true
-        webView.evaluateJavaScript(CardScanner.source) { [weak self] result,error in
-            guard let self else {return}
+        webView.evaluateJavaScript(CardScanner.source) { [weak self] result, error in
+            self?.handleQuickScanResult(result, error: error)
+        }
+    }
+
+    private func handleQuickScanResult(_ result: Any?, error: Error?) {
             self.scanPending=false
             if let error {
                 self.pendingSnapshotKey=""
@@ -86,7 +90,10 @@ final class PageReader: ObservableObject {
                 self.diagnosticReport="Dados conflitantes: " + info
                 return
             }
-            let key=(hero+["/"]+board+["/"]+hints+["/"]+[String(uncertain)]).joined(separator:"|")
+            let heroKey = hero.joined(separator:"|")
+            let boardKey = board.joined(separator:"|")
+            let hintKey = hints.joined(separator:"|")
+            let key = heroKey + "/" + boardKey + "/" + hintKey + "/" + String(uncertain)
             if key==self.pendingSnapshotKey {self.stableSamples+=1}
             else {self.pendingSnapshotKey=key;self.stableSamples=1}
             guard self.stableSamples>=2 else {return}
@@ -113,7 +120,7 @@ final class PageReader: ObservableObject {
             } else {
                 self.liveStatus="Acompanhando a mesa; cartas pessoais ocultas"
             }
-            self.diagnosticReport=[
+            let diagnosticLines: [String] = [
                 "BrasaAssisten leitor estrutural / versão experimental",
                 "Mão: #"+String(self.handSerial),
                 "Etapa: "+self.streetLabel,
@@ -128,8 +135,8 @@ final class PageReader: ObservableObject {
                 "Pares visíveis após revelação: "+String(exposed.count),
                 "Mudança: "+changed.rawValue,
                 "Elementos: "+info
-            ].joined(separator:"\n")
-        }
+            ]
+            self.diagnosticReport = diagnosticLines.joined(separator:"\n")
     }
 
     private func isBrasa(_ url:URL?) -> Bool {
