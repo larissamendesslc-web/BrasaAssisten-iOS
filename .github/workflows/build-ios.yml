@@ -1,0 +1,92 @@
+name: Build BrasaAssisten unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'BrasaAssisten/**'
+      - 'project.yml'
+      - '.github/workflows/build-ios.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Tools
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
+          xcodegen --version
+      - name: Generate placeholder icon
+        run: |
+          set -euo pipefail
+          cat >/tmp/brasa-icon.swift <<'SWIFT'
+          import AppKit
+          let size: CGFloat = 1024
+          let image = NSImage(size: NSSize(width: size, height: size))
+          image.lockFocus()
+          NSColor(calibratedRed: 0.10, green: 0.04, blue: 0.06, alpha: 1).setFill()
+          NSBezierPath(roundedRect: NSRect(x: 0, y: 0, width: size, height: size), xRadius: 190, yRadius: 190).fill()
+          NSColor(calibratedRed: 0.96, green: 0.60, blue: 0.22, alpha: 1).setStroke()
+          let outline = NSBezierPath(roundedRect: NSRect(x: 20, y: 20, width: 984, height: 984), xRadius: 180, yRadius: 180)
+          outline.lineWidth = 16
+          outline.stroke()
+          let paragraph = NSMutableParagraphStyle()
+          paragraph.alignment = .center
+          ("♠" as NSString).draw(in: NSRect(x: 42, y: 200, width: 940, height: 735), withAttributes: [.font: NSFont.systemFont(ofSize: 700, weight: .bold), .foregroundColor: NSColor(calibratedRed: 0.98, green: 0.34, blue: 0.13, alpha: 1), .paragraphStyle: paragraph])
+          ("BA" as NSString).draw(in: NSRect(x: 180, y: 80, width: 664, height: 215), withAttributes: [.font: NSFont.systemFont(ofSize: 180, weight: .heavy), .foregroundColor: NSColor(calibratedRed: 1.0, green: 0.80, blue: 0.43, alpha: 1), .paragraphStyle: paragraph])
+          image.unlockFocus()
+          let bitmap = NSBitmapImageRep(data: image.tiffRepresentation!)!
+          let data = bitmap.representation(using: .png, properties: [:])!
+          try data.write(to: URL(fileURLWithPath: "BrasaAssisten/Assets.xcassets/AppIcon.appiconset/AppIcon.png"))
+          SWIFT
+          swift /tmp/brasa-icon.swift
+          sips -g pixelWidth -g pixelHeight BrasaAssisten/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+      - name: Generate project
+        run: xcodegen generate --spec project.yml
+      - name: Build for physical iPhone without signing
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project BrasaAssisten.xcodeproj \
+            -scheme BrasaAssisten \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$PWD/.derived" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            build
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP="$PWD/.derived/Build/Products/Release-iphoneos/BrasaAssisten.app"
+          test -f "$APP/Info.plist"
+          test -f "$APP/BrasaAssisten"
+          mkdir -p output/Payload
+          ditto "$APP" output/Payload/BrasaAssisten.app
+          cd output
+          zip -qry -X ../BrasaAssisten-v0.2-unsigned.ipa Payload
+          cd ..
+          unzip -t BrasaAssisten-v0.2-unsigned.ipa | tail -2
+          shasum -a 256 BrasaAssisten-v0.2-unsigned.ipa > BrasaAssisten-v0.2-unsigned.sha256
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: BrasaAssisten-IPA-KSign
+          path: |
+            BrasaAssisten-v0.2-unsigned.ipa
+            BrasaAssisten-v0.2-unsigned.sha256
+          retention-days: 30
+          if-no-files-found: error
