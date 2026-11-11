@@ -52,6 +52,11 @@ jobs:
           SWIFT
           swift /tmp/brasa-icon.swift
           sips -g pixelWidth -g pixelHeight BrasaAssisten/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+      - name: Verify poker engine with Swift tests
+        run: |
+          set -euo pipefail
+          swiftc BrasaAssisten/PokerEngine.swift Tests/main.swift -o /tmp/brasa-engine-tests
+          /tmp/brasa-engine-tests
       - name: Generate project
         run: xcodegen generate --spec project.yml
       - name: Build for physical iPhone without signing
