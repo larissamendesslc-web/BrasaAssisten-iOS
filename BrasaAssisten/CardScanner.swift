@@ -163,6 +163,27 @@ enum CardScanner {
         // Never invent a suit when shapes are not distinctive enough.
         return best && bestScore>0.56 && bestScore-second>0.09 ? best : null;
       }
+      function labelToSuit(value) {
+        const v=String(value||'').toLowerCase();
+        for(const [symbol,re] of SYMBOLS)if(new RegExp(re,'i').test(v))return symbol;
+        for(const symbol of ['♥','♦','♠','♣'])if(v.includes(symbol))return symbol;
+        return null;
+      }
+      function localSuitFromMarkup(node) {
+        let el=node?.parentElement;
+        for(let level=0;el&&level<4;level++,el=el.parentElement){
+          const box=rect(el);
+          if(!box || box.width>130 || box.height>140)break;
+          const metadata=[
+            el.getAttribute?.('data-suit'), el.getAttribute?.('data-card'),
+            el.getAttribute?.('class'),el.getAttribute?.('aria-label'),
+            el.getAttribute?.('title')
+          ].filter(Boolean).join(' ');
+          const found=labelToSuit(metadata);
+          if(found)return found;
+        }
+        return null;
+      }
       const svgCache=new Map();
       function svgSuit(svg) {
         if(svgCache.has(svg))return svgCache.get(svg);
@@ -187,14 +208,35 @@ enum CardScanner {
         if(!visible(svg))return false;
         const r=rect(svg);return r.width>=6 && r.height>=6 && r.width<=75 && r.height<=90;
       }).map(svg=>({svg,p:pos(rect(svg))}));
+      // CSS backgrounds and <img> files sometimes name their suit even when
+      // no inline <svg> exists. Only inspect small, rendered elements near a rank.
+      const imageGlyphs=Array.from(document.querySelectorAll('img,[style*="background"]'))
+        .filter(el=>{
+          if(!visible(el))return false;
+          const r=rect(el);return r.width>=6 && r.height>=6 && r.width<=75 && r.height<=90;
+        }).map(el=>{
+          const src=el.getAttribute('src')||el.getAttribute('alt')||
+            getComputedStyle(el).backgroundImage||'';
+          return {p:pos(rect(el)),suit:labelToSuit(src)};
+        }).filter(entry=>entry.suit);
       const rankCandidates=[];
       for(const rank of ranks) {
         let candidate=null,dist=Infinity;
+        const localSuit=localSuitFromMarkup(rank.node);
+        if(localSuit)candidate={value:localSuit,confidence:0.96,source:'card-markup'};
         for(const suit of suitTexts) {
           const dx=Math.abs(suit.x-rank.x),dy=suit.y-rank.y;
           if(dx<31 && dy>-14 && dy<65) {
             const cost=dx*1.2+Math.abs(dy-18);
             if(cost<dist){dist=cost;candidate={value:suit.suit,confidence:0.97,source:'suit-text'}}
+          }
+        }
+        if(!candidate) {
+          for(const item of imageGlyphs) {
+            const dx=Math.abs(item.p.x-rank.x),dy=item.p.y-rank.y;
+            if(dx>43 || dy<-15 || dy>75)continue;
+            const cost=dx+Math.abs(dy-18);
+            if(cost<dist){dist=cost;candidate={value:item.suit,confidence:0.86,source:'image-name'}}
           }
         }
         if(!candidate) {
@@ -294,7 +336,7 @@ enum CardScanner {
       return {hero,board,hints,source,uncertain,observing,stage,pot,toCall,
               playerTurn,revealed:revealed.slice(0,5),
               diagnostics:'DOM cards='+cards.length+' ranks='+ranks.length+
-                ' SVGs='+nearbySVGs.length+' boardSlots='+row.length+
+                ' SVGs='+nearbySVGs.length+' imgSuits='+imageGlyphs.length+' boardSlots='+row.length+
                 ' scanned='+scanned};
     })()
     """#
