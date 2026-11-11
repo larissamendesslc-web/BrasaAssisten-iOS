@@ -7,6 +7,7 @@ struct ContentView: View {
     @StateObject private var reader = PageReader()
     @State private var showTraining = false
     @State private var showPanel = false
+    @State private var compactPanel = true
     @State private var holeInput = ""
     @State private var boardInput = ""
     @State private var showDiagnostics = false
@@ -75,7 +76,7 @@ struct ContentView: View {
                         Spacer()
                         HStack {
                             Spacer()
-                            Button(action: { withAnimation(.spring(response: 0.32)) { showPanel = true } }) {
+                            Button(action: { withAnimation(.spring(response: 0.32)) { compactPanel = true; showPanel = true } }) {
                                 Image(systemName: "flame.fill")
                                     .font(.system(size: 23, weight: .bold))
                                     .foregroundStyle(.orange)
@@ -104,12 +105,15 @@ struct ContentView: View {
                         Spacer().frame(height: 132)
                     }
                 } else {
-                    Color.black.opacity(0.18)
-                        .ignoresSafeArea()
-                        .onTapGesture { withAnimation { showPanel = false } }
+                    if !compactPanel {
+                        Color.black.opacity(0.18)
+                            .ignoresSafeArea()
+                            .onTapGesture { withAnimation { showPanel = false } }
+                    }
                     panel
                         .padding(.horizontal, 10)
-                        .padding(.bottom, max(geometry.safeAreaInsets.bottom, 10))
+                        // Keep the original betting controls accessible in compact mode.
+                        .padding(.bottom, max(geometry.safeAreaInsets.bottom, 10) + (compactPanel ? 112 : 0))
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
 
@@ -190,13 +194,103 @@ struct ContentView: View {
             .foregroundStyle(active ? Color.black : Color.white.opacity(0.65))
     }
 
-    private var panel: some View {
+    @ViewBuilder private var panel: some View {
+        if compactPanel {
+            quickPanel
+        } else {
+            fullPanel
+        }
+    }
+
+    // In regular play only the relevant result is shown. All diagnostics
+    // remain available in the expanded panel with one extra tap.
+    private var quickPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 7) {
+                Image(systemName: "flame.fill").foregroundStyle(.orange)
+                Text("BrasaAssisten").bold().foregroundStyle(gold)
+                Spacer()
+                Text(reader.streetLabel)
+                    .font(.caption).foregroundStyle(.secondary)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { compactPanel = false }
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                }.accessibilityLabel("Expandir informações")
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { showPanel = false }
+                } label: {
+                    Image(systemName: "xmark")
+                }.accessibilityLabel("Fechar assistente")
+            }
+            .font(.system(size: 15))
+
+            HStack(alignment: .top, spacing: 8) {
+                RoundedRectangle(cornerRadius: 3).fill(signal).frame(width: 5)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(assessed.action).font(.headline).bold()
+                    Text(assessed.strength).font(.caption).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(8)
+            .background(signal.opacity(0.11), in: RoundedRectangle(cornerRadius: 10))
+
+            if reader.liveTokens.count == 2 {
+                Text("Sua mão: " + reader.liveTokens.joined(separator: " "))
+                    .font(.caption).foregroundStyle(gold).lineLimit(1)
+            } else if reader.observing {
+                Text("Modo espectador • cartas pessoais ocultas")
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+
+            if !reader.liveBoard.isEmpty {
+                Text("Mesa: " + reader.liveBoard.joined(separator: " "))
+                    .font(.subheadline).bold().foregroundStyle(gold)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+            } else if reader.boardNeedsReview {
+                Text("Mesa incompleta • " + reader.boardRankHints.joined(separator: " "))
+                    .font(.caption).foregroundStyle(.orange).lineLimit(1)
+            }
+
+            Text(assessed.reason)
+                .font(.caption).foregroundStyle(.secondary)
+                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+
+            HStack {
+                if !reader.observedPot.isEmpty {
+                    Text("Pote BRL " + reader.observedPot)
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Detalhes e correções") {
+                    withAnimation(.easeInOut(duration: 0.2)) { compactPanel = false }
+                }
+                .font(.caption2).foregroundStyle(gold)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .foregroundStyle(.white)
+        .background(Color(red: 0.09, green: 0.065, blue: 0.07),
+                    in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18)
+            .stroke(gold.opacity(0.8), lineWidth: 1))
+        .shadow(radius: 10)
+    }
+
+    private var fullPanel: some View {
         ScrollView {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 Image(systemName: "flame.fill").foregroundStyle(.orange)
                 Text("BrasaAssisten").bold().foregroundStyle(gold)
                 Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { compactPanel = true }
+                } label: {
+                    Image(systemName: "arrow.down.right.and.arrow.up.left")
+                }.accessibilityLabel("Compactar painel")
                 Button(action: { browser.reload() }) {
                     Image(systemName: "arrow.clockwise")
                 }.accessibilityLabel("Recarregar site")
