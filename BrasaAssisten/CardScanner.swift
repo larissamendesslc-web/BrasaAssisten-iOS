@@ -272,7 +272,28 @@ enum CardScanner {
                   'preflop';
       const bodyText=(document.body.innerText||'').slice(0,17000);
       const pot=(bodyText.match(/Pote\s*(?:BRL|R\$)\s*([\d.,]+)/i)||[])[1]||'';
-      return {hero,board,hints,source,uncertain,observing,stage,pot,
+      const toCall=(bodyText.match(/(?:Pagar|Passar\/Pagar)\s*(?:BRL|R\$)\s*([\d.,]+)/i)||[])[1]||'';
+      const playerTurn=/\bSUA VEZ\b/i.test(bodyText);
+      // Only expose cards which the website itself renders face-up at showdown.
+      // Never reconstruct concealed opponents' cards or inspect private app state.
+      let revealed=[];
+      if(board.length===5){
+        const onBoard=cards.filter(p=>row.some(q=>Math.abs(q.x-p.x)<16 && Math.abs(q.y-p.y)<20));
+        const other=cards.filter(p=>p.y/H>0.19 && p.y/H<0.87 &&
+          p.y/H<0.80 || p.y/H>0.80)
+          .filter(p=>!onBoard.includes(p))
+          .filter(p=>!top.includes(p)&&!bottom.includes(p));
+        for(const p of other){
+          const mate=other.find(q=>q!==p && Math.abs(q.x-p.x)<75 &&
+            Math.abs(q.y-p.y)<35 && q.token!==p.token);
+          if(!mate)continue;
+          const pair=[p.token,mate.token];
+          if(!revealed.some(xs=>xs.join('|')===pair.join('|') ||
+            xs.join('|')===pair.slice().reverse().join('|')))revealed.push(pair);
+        }
+      }
+      return {hero,board,hints,source,uncertain,observing,stage,pot,toCall,
+              playerTurn,revealed:revealed.slice(0,5),
               diagnostics:'DOM cards='+cards.length+' ranks='+ranks.length+
                 ' SVGs='+nearbySVGs.length+' boardSlots='+row.length+
                 ' scanned='+scanned};
