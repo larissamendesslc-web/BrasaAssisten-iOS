@@ -70,3 +70,7 @@ A v0.7 não lia as cartas porque a função JavaScript executada a cada 0,6 segu
 - A suíte de testes simula pré-flop, flop com naipe SVG, turn/river, leitura em modo espectador e casos sem naipe reconhecido.
 
 **Importante:** testes simulados verificam comportamento do algoritmo, não garantem que o Brasa Poker exponha todos os SVGs do mesmo modo. A compilação real e a leitura em um iPhone 11 ainda precisam ser verificadas. Em casos incertos o app deve indicar falta de dados, não inventar cartas ou decisões.
+
+## Instalação beta em paralelo
+
+A v0.9 usa o identificador `com.brasaassisten.browser.beta` e o nome **BrasaAssisten Beta**. Assine o IPA pelo KSign com seu próprio certificado válido; isso permite testar a versão experimental sem substituir o aplicativo BrasaAssisten instalado anteriormente. Não envie certificados para este repositório.
