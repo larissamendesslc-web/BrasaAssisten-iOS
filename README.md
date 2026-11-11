@@ -47,3 +47,13 @@ Os sinais são heurísticas básicas de estudo em partidas fictícias e NÃO sub
 - O app exibe o nome da etapa e permite **Copiar diagnóstico da leitura**. Esse diagnóstico contém apenas cartas candidatas, posições lógicas/estado e transições; não inclui histórico completo da página, senhas nem capturas de tela.
 - Novo conjunto de testes automáticos em Tests/handSessionMain.swift. A compilação da v0.7 só deverá prosseguir se todos os testes de regressão passarem no GitHub Actions.
 - Ainda é necessário verificar no iPhone a detecção de cartas comunitárias quando o site usa imagens/SVG: melhorias na lógica de estado não provam reconhecimento visual completo.
+
+## v0.8 — correção do scanner automático
+
+A v0.7 não lia as cartas porque a função JavaScript executada a cada 0,6 segundo tinha duas declarações da constante `clean` no mesmo escopo, causando SyntaxError. A inspeção manual funcionava porque utilizava outro script.
+
+- Removida a declaração duplicada de `clean`;
+- Adicionados testes sintáticos automáticos de TODOS os scripts JavaScript embarcados (Node.js --check), executados no GitHub Actions antes de criar o IPA;
+- Adicionadas simulações do próprio scanner com duas cartas, flop e river (o parser e a separação espacial, não o reconhecimento real do site);
+- Quando uma chamada a JavaScript falhar, o app exibe a causa em “Copiar diagnóstico da leitura”, em vez de “Leitura indisponível” sem detalhes;
+- O reconhecimento de cartas reais no iPhone precisa ser revalidado após a compilação. Não foi afirmado suporte completo a cartas comunitárias do Brasa.
