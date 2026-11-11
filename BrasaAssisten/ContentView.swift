@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var browser = BrasaBrowser()
+    @StateObject private var reader = PageReader()
+    @State private var showTraining = false
     @State private var showPanel = false
     @State private var floatingOffset = CGSize.zero
     @GestureState private var floatingDrag = CGSize.zero
@@ -81,9 +83,11 @@ struct ContentView: View {
                 }
             }
         }
+        .sheet(isPresented: $showTraining) { TrainingView() }
     }
 
     private var panel: some View {
+        ScrollView {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 Image(systemName: "flame.fill").foregroundStyle(.orange)
@@ -113,6 +117,38 @@ struct ContentView: View {
             }
             .padding(12)
             .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+            Divider().overlay(gold.opacity(0.45))
+            Text("LEITOR — TESTE NO IPHONE").font(.caption).bold().foregroundStyle(gold)
+            HStack {
+                Button("Inspecionar HTML") { reader.inspectPage(browser.webView) }
+                    .buttonStyle(.bordered).disabled(reader.isBusy)
+                Button("Testar imagem") { reader.inspectImage(browser.webView) }
+                    .buttonStyle(.bordered).disabled(reader.isBusy)
+            }.font(.caption)
+            Text(reader.status).font(.footnote).fixedSize(horizontal: false, vertical: true)
+            if reader.canvasCount > 0 || reader.svgCount > 0 {
+                Text("Elementos: \(reader.canvasCount) Canvas • \(reader.svgCount) SVG")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            if !reader.domTokens.isEmpty {
+                Text("Candidatos HTML: " + reader.domTokens.joined(separator: "  "))
+                    .font(.caption2).foregroundStyle(.orange)
+            }
+            if !reader.imageTokens.isEmpty {
+                Text("Candidatos OCR: " + reader.imageTokens.joined(separator: "  "))
+                    .font(.caption2).foregroundStyle(.orange)
+            }
+            Text("Cartas listadas acima são candidatos, não identificações verificadas. Não use este teste para decidir apostas.")
+                .font(.caption2).foregroundStyle(.secondary)
+            Button("Abrir calculadora de treino") {
+                showPanel = false
+                showTraining = true
+            }
+                .font(.subheadline).bold()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .foregroundStyle(.white)
+                .background(Color.white.opacity(0.13), in: RoundedRectangle(cornerRadius: 12))
             Button("Voltar ao Brasa") { withAnimation { showPanel = false } }
                 .font(.headline)
                 .frame(maxWidth: .infinity)
@@ -121,6 +157,8 @@ struct ContentView: View {
                 .background(gold, in: RoundedRectangle(cornerRadius: 12))
         }
         .padding(16)
+        }
+        .frame(maxHeight: 490)
         .foregroundStyle(.white)
         .background(Color(red: 0.09, green: 0.065, blue: 0.07), in: RoundedRectangle(cornerRadius: 22))
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(gold.opacity(0.8), lineWidth: 1))
