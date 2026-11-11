@@ -1,7 +1,24 @@
 # BrasaAssisten iOS
 
-Protótipo nativo para iPhone 11: abre `https://brasa.poker/` em WKWebView e exibe um botão flutuante com painel informativo, sem alterar a mesa do site.
+Aplicativo nativo experimental para iPhone 11: abre https://brasa.poker/ usando WKWebView e exibe um painel flutuante, sem mexer na interface original da mesa.
 
-**Status:** código experimental; não possui leitura automática de cartas nem motor de apostas. Para instalar, é necessário compilar um IPA iOS e assiná-lo com um certificado válido no aparelho.
+## v0.3 — Leitor diagnóstico + treino
 
-O projeto é independente e não afiliado ao Brasa Poker.
+- Painel flutuante com rolagem.
+- **Inspecionar HTML:** busca apenas candidatos a cartas no conteúdo visível e informa Canvas/SVG detectados. Isso não é reconhecimento confirmado.
+- **Testar imagem:** captura a WKWebView e tenta reconhecer cartas com o Vision OCR da Apple, exclusivamente no dispositivo (sem upload).
+- **Treino de Hold'em:** entrada manual com duas cartas e 0/3/4/5 comunitárias; avalia combinações e estima equidade por 1.200 cenários aleatórios, entre 1 e 8 adversários.
+- **Testes matemáticos:** em Tests/main.swift, executados antes da geração do IPA no GitHub Actions.
+- Convenção: a=paus, c=copas, e=espadas, d=ouros. Exemplo: Ae Kd.
+
+## Gerar IPA para KSign
+
+Abra Actions → Build BrasaAssisten unsigned IPA → Run workflow. Após execução verde, baixe BrasaAssisten-IPA-KSign na seção Artifacts. Extraia o ZIP, importe o IPA no KSign, assine com seu certificado e instale.
+
+**Nunca envie certificados nem perfis de assinatura ao GitHub.**
+
+## Limites atuais
+
+Não existe leitura automática **confiável** da mesa Brasa (cartas, posição, ações e apostas). Tokens detectados por HTML/OCR são candidatos não verificados; eles NÃO alimentam o motor de treino. O projeto não possui modelo de linguagem ou recomendações automáticas de aposta, não conhece cartas escondidas e não transmite conteúdo da página para servidores próprios. O cálculo offline assume mãos aleatórias e não prevê comportamento humano.
+
+Respeite as regras da plataforma, especialmente nas partidas com dinheiro real. Projeto independente e não afiliado ao Brasa Poker.
