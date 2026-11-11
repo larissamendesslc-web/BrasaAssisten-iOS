@@ -1,0 +1,5 @@
+.DS_Store
+.derived/
+*.xcodeproj
+output/
+*.ipa
