@@ -87,6 +87,15 @@ let c=scan(
 );
 assert(eq(Array.from(c.board),["Q♦","4♦","6♠","2♠","A♦"]),"river with 5 svg suits");
 assert(c.stage==="river","river stage");
+let spectatorRiver=scan(
+  [node("Q",70,395),node("4",120,395),node("6",170,395),
+   node("2",220,395),node("A",270,395)],
+  [svg("diamond",78,422),svg("diamond",128,422),svg("spade",178,422),
+   svg("spade",228,422),svg("diamond",278,422)]
+);
+assert(spectatorRiver.observing===true,"spectator has no hidden cards");
+assert(spectatorRiver.board.length===5 && spectatorRiver.stage==="river","spectator sees complete river");
+
 let spectator=scan(
   [node("5",100,395),node("J",150,395),node("4",200,395)],
   [svg("club",108,422),svg("heart",158,422),svg("club",208,422)]
@@ -96,6 +105,6 @@ assert(eq(Array.from(spectator.board),["5♣","J♥","4♣"]),"spectator board")
 let unknown=scan([node("Q",95,395),node("4",145,395),node("6",195,395)]);
 assert(unknown.uncertain===true,"unknown suits don't create invented board");
 assert(unknown.board.length===0,"no fake flush");
-console.log("CardScanner tests: hero, flop, river, observer and unrecognized suits passed.");
+console.log("CardScanner tests: hero, flop, river, spectator river, observer and unrecognized suits passed.");
 """,encoding="utf-8")
     subprocess.run(["node",str(test),str(script)],check=True)
