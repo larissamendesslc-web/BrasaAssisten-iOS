@@ -29,3 +29,12 @@ No painel, há três faixas: VERMELHO (fraca), AMARELO (cautela), VERDE (forte),
 A leitura automática do HTML roda a cada 3 segundos e exibe candidatos somente após duas leituras iguais; NÃO considera essas cartas confirmadas. Toque em "Confirmar essas duas cartas" quando a correspondência com a mesa estiver correta. Em mesas onde o Brasa não expõe cartas no HTML, use a entrada manual. O app não possui análise automática confiável de apostas, adversários ou probabilidades individuais de vitória e não executa ações no site.
 
 Os sinais são heurísticas básicas de estudo em partidas fictícias e NÃO substituem avaliação do tamanho da aposta, posição e range. Nenhuma situação de aposta deve ser decidida só pelo sinal de cor.
+
+## v0.6 — Leitura rápida separada por posição
+
+- Varredura DOM de 0,6 em 0,6 segundo, com estabilização após duas leituras; antes eram 3 segundos entre varreduras. A meta é reduzir a latência observada, mas isso depende do DOM e do iPhone.
+- Diferencia a mão do jogador pela área do topo (alternativamente rodapé) e tenta identificar as cartas comunitárias no centro da mesa. Desconsidera leitura com cartas repetidas/inválidas.
+- Se houver ao menos três valores comunitários, mas faltarem naipes para identificar as cartas, o painel para de exibir a recomendação pré-flop e apresenta "MESA NÃO LIDA".
+- A análise atualiza automaticamente quando o leitor reconhece flop, turn e river; permite correção manual dos dados, sem sobrepor o conteúdo do site.
+- Em nova mão identificada, apaga correções antigas e recupera a análise automática. Correções manuais de cartas da mesa podem ser abandonadas quando novas cartas identificadas as estenderem.
+- **Limite:** o DOM do Brasa não foi inspecionado por uma sessão de debug no aparelho. Alguns naipes desenhados em SVG/imagens podem não ser extraídos por esse leitor e exigir reconhecimento visual específico. NÃO apresentamos extração automática de comunitárias como validada.
