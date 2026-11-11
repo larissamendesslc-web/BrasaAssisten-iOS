@@ -9,34 +9,46 @@ struct ContentView: View {
     @State private var showPanel = false
     @State private var holeInput = ""
     @State private var boardInput = ""
+    @State private var showDiagnostics = false
+
     private var assessed: DecisionAdvice {
-        let userHole=holeInput.trimmingCharacters(in:.whitespacesAndNewlines)
-        let userBoard=boardInput.trimmingCharacters(in:.whitespacesAndNewlines)
-        let fromAuto=userHole.isEmpty
-        let holeText=userHole.isEmpty ? reader.liveTokens.joined(separator:" ") : userHole
-        let boardText=userBoard.isEmpty ? reader.liveBoard.joined(separator:" ") : userBoard
-        if reader.boardNeedsReview && userBoard.isEmpty {
-            return DecisionAdvice(color:"neutral", action:"MESA NÃO LIDA",
-                strength:"Aguardando cartas comunitárias",
-                reason:"O jogo já mostra cartas no centro, mas os naipes não foram reconhecidos. Não vou repetir uma sugestão pré-flop.",
-                condition:"Digite as cartas da mesa ou aguarde uma leitura válida.")
+        let manualHole=holeInput.trimmingCharacters(in:.whitespacesAndNewlines)
+        let manualBoard=boardInput.trimmingCharacters(in:.whitespacesAndNewlines)
+        let holeString=manualHole.isEmpty ? reader.liveTokens.joined(separator:" ") : manualHole
+        let boardString=manualBoard.isEmpty ? reader.liveBoard.joined(separator:" ") : manualBoard
+
+        if reader.boardNeedsReview && manualBoard.isEmpty {
+            return DecisionAdvice(color:"neutral",action:"MESA INCOMPLETA",
+                strength:reader.streetLabel,
+                reason:"Valores comunitários apareceram, mas faltam naipes ou cartas. Não vou usar a análise anterior.",
+                condition:"Aguarde uma leitura completa ou corrija as comunitárias.")
         }
-        guard let h=PokerEngine.parseCards(holeText), h.count==2,
-              let b=PokerEngine.parseCards(boardText),
-              [0,3,4,5].contains(b.count),
-              Set(h+b).count==h.count+b.count else {
+        guard let board=PokerEngine.parseCards(boardString),
+              [0,3,4,5].contains(board.count) else {
             return DecisionEngine.assess(hole:[],board:[])
         }
-        let result=DecisionEngine.assess(hole:h,board:b)
-        if fromAuto || (userBoard.isEmpty && !reader.liveBoard.isEmpty) {
-            return DecisionAdvice(color:result.color,
-                action:"PRÉVIA: " + result.action,
-                strength:result.strength,
-                reason:result.reason,
-                condition:"Cartas detectadas pelo leitor, ainda não confirmadas. " + result.condition)
+
+        if holeString.isEmpty && board.count>=3 {
+            return DecisionAdvice(color:"neutral", action:"OBSERVANDO",
+                strength:reader.streetLabel+" • "+board.map(\.description).joined(separator:" "),
+                reason:TableInsights.describe(board:board),
+                condition:"Sem duas cartas pessoais reveladas, não existe recomendação válida de aposta. Acompanhando somente o que está visível.")
+        }
+
+        guard let hole=PokerEngine.parseCards(holeString),hole.count==2,
+              Set(hole+board).count==hole.count+board.count else {
+            return DecisionEngine.assess(hole:[],board:[])
+        }
+        let result=DecisionEngine.assess(hole:hole,board:board)
+        let provisional=manualHole.isEmpty || (manualBoard.isEmpty && board.count>0)
+        if provisional {
+            return DecisionAdvice(color:result.color,action:"PRÉVIA: "+result.action,
+                strength:result.strength,reason:result.reason,
+                condition:"Cartas automaticamente detectadas, ainda não verificadas. "+result.condition)
         }
         return result
     }
+
     private var signal: Color {
         switch assessed.color {
         case "green": return Color(red: 0.17, green: 0.70, blue: 0.38)
@@ -211,24 +223,32 @@ struct ContentView: View {
             .padding(10)
             .background(signal.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
 
-            if reader.liveTokens.count == 2 {
-                Text("Sua mão (prévia): " + reader.liveTokens.joined(separator:" "))
+            if reader.liveTokens.count==2 {
+                Text("Suas cartas: "+reader.liveTokens.joined(separator:" "))
                     .font(.caption).foregroundStyle(.yellow)
-                if !reader.liveBoard.isEmpty {
-                    Text("Cartas comunitárias (prévia): " + reader.liveBoard.joined(separator:" "))
-                        .font(.caption).foregroundStyle(.yellow)
-                }
-                if reader.boardNeedsReview {
-                    Text("Cartas comunitárias visíveis, mas incompletas.")
-                        .font(.caption).foregroundStyle(.orange)
-                    if !reader.boardRankHints.isEmpty {
-                        Text("Valores candidatos: " + reader.boardRankHints.joined(separator:" "))
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-                Button("Confirmar minhas duas cartas") {
+                Button("Confirmar cartas pessoais") {
                     holeInput=reader.liveTokens.joined(separator:" ")
-                }.buttonStyle(.bordered)
+                }.font(.caption).buttonStyle(.bordered)
+            } else if reader.observing {
+                Label("Mesa em observação / cartas pessoais ocultas",
+                      systemImage:"eye")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            if !reader.liveBoard.isEmpty {
+                Text("Comunitárias: "+reader.liveBoard.joined(separator:" "))
+                    .font(.caption).foregroundStyle(.yellow)
+            }
+            if reader.boardNeedsReview {
+                Text("Comunitárias incompletas")
+                    .font(.caption).foregroundStyle(.orange)
+                if !reader.boardRankHints.isEmpty {
+                    Text("Valores encontrados: "+reader.boardRankHints.joined(separator:" "))
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            if !reader.observedPot.isEmpty {
+                Text("Pote exibido: "+reader.observedPot)
+                    .font(.caption2).foregroundStyle(.secondary)
             }
             Text(reader.liveStatus).font(.caption2).foregroundStyle(.secondary)
             Button {
@@ -257,6 +277,15 @@ struct ContentView: View {
                 Text("a♣ c♥ e♠ d♦").font(.caption2).foregroundStyle(.secondary)
             }
             Text(assessed.condition).font(.caption2).foregroundStyle(.secondary)
+            Button {
+                withAnimation(.easeInOut(duration:0.2)) {showDiagnostics.toggle()}
+            } label: {
+                Label(showDiagnostics ? "Ocultar diagnóstico" : "Ver diagnóstico do leitor",
+                      systemImage:showDiagnostics ? "chevron.up":"chevron.down")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+            if showDiagnostics {
             Divider().overlay(gold.opacity(0.45))
             Text("DIAGNÓSTICO DO LEITOR").font(.caption).bold().foregroundStyle(gold)
             HStack {
@@ -280,8 +309,9 @@ struct ContentView: View {
                 Text("Pistas de valores no rodapé: " + reader.rankClues.joined(separator: "  "))
                     .font(.caption2).foregroundStyle(.orange)
             }
-            Text("Cartas listadas acima são candidatos, não identificações verificadas. Não use este teste para decidir apostas.")
+            Text("Cartas listadas são candidatas, não verificações independentes.")
                 .font(.caption2).foregroundStyle(.secondary)
+            }
             Button("Abrir calculadora de treino") {
                 showPanel = false
                 showTraining = true
@@ -300,7 +330,7 @@ struct ContentView: View {
         }
         .padding(16)
         }
-        .frame(maxHeight: 450)
+        .frame(maxHeight: 390)
         .foregroundStyle(.white)
         .background(Color(red: 0.09, green: 0.065, blue: 0.07), in: RoundedRectangle(cornerRadius: 22))
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(gold.opacity(0.8), lineWidth: 1))
