@@ -74,3 +74,7 @@ A v0.7 não lia as cartas porque a função JavaScript executada a cada 0,6 segu
 ## Instalação beta em paralelo
 
 A v0.9 usa o identificador `com.brasaassisten.browser.beta` e o nome **BrasaAssisten Beta**. Assine o IPA pelo KSign com seu próprio certificado válido; isso permite testar a versão experimental sem substituir o aplicativo BrasaAssisten instalado anteriormente. Não envie certificados para este repositório.
+
+## v0.9.1 — painel de leitura rápida
+
+Agora, ao tocar no ícone de chama, aparece um painel compacto com o sinal principal, a etapa (flop/turn/river), as cartas próprias quando visíveis, as comunitárias e o pote. O painel compacto fica acima dos controles de aposta do navegador. O botão **Detalhes e correções** mantém o painel completo e os diagnósticos acessíveis; dentro dele, **Compactar painel** volta ao resumo. Não há alterações no motor de reconhecimento nesta revisão. A versão Beta permanece isolada do aplicativo anterior.
