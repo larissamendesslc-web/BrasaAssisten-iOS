@@ -84,7 +84,7 @@ final class BrasaBrowser: NSObject, ObservableObject, WKNavigationDelegate, WKUI
     }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         isLoading = false
-        pageTitle = webView.title ?? "Brasa Poker"
+        pageTitle = (webView.title?.isEmpty == false) ? webView.title! : "Brasa Poker"
     }
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         isLoading = false
