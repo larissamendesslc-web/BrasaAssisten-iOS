@@ -1,0 +1,42 @@
+name: Publish direct iPhone beta download
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-ios-beta.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download already verified v0.9.1 IPA from successful build 58
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run download 43089978110 --repo "$GITHUB_REPOSITORY" --name BrasaAssisten-IPA-KSign --dir "$RUNNER_TEMP/dist"
+          cd "$RUNNER_TEMP/dist"
+          test -s BrasaAssisten-v0.9.1-unsigned.ipa
+          test -s BrasaAssisten-v0.9.1-unsigned.sha256
+          shasum -a 256 -c BrasaAssisten-v0.9.1-unsigned.sha256
+      - name: Publish public GitHub Release download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/dist"
+          if gh release view v0.9.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload v0.9.1 BrasaAssisten-v0.9.1-unsigned.ipa BrasaAssisten-v0.9.1-unsigned.sha256 --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create v0.9.1 BrasaAssisten-v0.9.1-unsigned.ipa BrasaAssisten-v0.9.1-unsigned.sha256 \
+              --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "BrasaAssisten Beta v0.9.1 para iPhone" --prerelease \
+              --notes "IPA não assinado para KSign. Download direto via Releases, sem necessidade de baixar o artefato do Actions. Compilação e testes aprovados no workflow #58. A precisão da leitura no Brasa depende da interface do site e de testes no iPhone."
+          fi
