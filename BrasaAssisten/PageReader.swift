@@ -81,7 +81,6 @@ final class PageReader: ObservableObject {
                   push(match[0],rect.left+rect.width/2,rect.top+rect.height/2,"text");
               } catch(_) {}
             }
-            const clean=text.trim().toUpperCase();
             if ((rankOnly.test(clean)||suitOnly.test(clean)) && text.length<=6) {
               const range=document.createRange();
               range.selectNodeContents(node);
