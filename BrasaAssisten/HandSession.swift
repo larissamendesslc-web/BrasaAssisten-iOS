@@ -39,7 +39,7 @@ struct HandSession {
               Set(newHero + newBoard).count == newHero.count + newBoard.count else {
             return .invalid
         }
-        if newHero != hero {
+        if Set(newHero) != Set(hero) {
             hero = newHero
             board = newBoard
             boardUncertain = uncertain
