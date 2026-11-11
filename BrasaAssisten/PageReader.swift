@@ -20,231 +20,107 @@ final class PageReader: ObservableObject {
     @Published var liveTokens:[String]=[]
     @Published var liveBoard:[String]=[]
     @Published var liveSource="nenhuma"
+    @Published var observing=true
+    @Published var observedPot=""
     @Published var boardRankHints:[String]=[]
     @Published var boardNeedsReview=false
     @Published var liveStatus="Aguardando cartas"
     @Published var handSerial=0
     @Published var streetLabel="Pré-flop"
     @Published var diagnosticReport="Nenhum diagnóstico registrado."
-    private var handSession=HandSession()
+    private var tableSession=TableSession()
     private var scanPending=false
     private var pendingSnapshotKey=""
     private var stableSamples=0
 
-    // Fast, local, read-only scan; never reads network calls, private state,
-    // cookies, passwords or hidden opponent cards.
-    // The mini-card display near the TOP is considered the main source of
-    // the user's cards. Community cards come from the MIDDLE of the viewport.
+    /// Continuous read-only scan of the visible table (including observation).
+    /// A scan is provisional until repeated on two consecutive frames.
     func quickScan(_ webView:WKWebView) {
-        guard !scanPending, isBrasa(webView.url) else { return }
+        guard !scanPending, isBrasa(webView.url) else {return}
         scanPending=true
-        let script = #"""
-        (() => {
-          const W=innerWidth,H=innerHeight;
-          if (!W || !H || !document.body) return {hero:[],board:[],source:"empty",boardHint:[]};
-          const full=/(?:10|[2-9AJQK])\s*[♠♣♥♦]/gi;
-          const rankOnly=/^(?:10|[2-9AJQK])$/i;
-          const suitOnly=/^[♠♣♥♦]$/;
-          const pts=[],ranks=[],suits=[];
-          const isShown=e=>{
-            if (!e || !e.getBoundingClientRect) return false;
-            const r=e.getBoundingClientRect(),style=getComputedStyle(e);
-            return r.width>0 && r.height>0 && style.display!=="none" &&
-                   style.visibility!=="hidden" && r.bottom>0 && r.top<H;
-          };
-          const push=(value,x,y,source)=>{
-            const token=value.toUpperCase().replace(/\s+/g,"");
-            if (!/^(?:10|[2-9AJQK])[♠♣♥♦]$/.test(token)) return;
-            if (x<0 || x>W || y<0 || y>H) return;
-            pts.push({token,x,y,source});
-          };
-          const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-          let node,n=0;
-          while((node=walker.nextNode()) && n++<3200) {
-            const parent=node.parentElement;
-            const text=node.textContent||"";
-            if (!text.trim() || text.length>100) continue;
-            const clean=text.trim().toUpperCase();
-            const isPart=rankOnly.test(clean) || suitOnly.test(clean);
-            full.lastIndex=0;
-            if (!isPart && !full.test(text)) continue;
-            if (!isShown(parent) || ["SCRIPT","STYLE","NOSCRIPT"].includes(parent.tagName)) continue;
-            full.lastIndex=0;
-            let match;
-            while((match=full.exec(text))!==null) {
-              const range=document.createRange();
-              try {
-                range.setStart(node,match.index);
-                range.setEnd(node,match.index+match[0].length);
-                const rect=range.getBoundingClientRect();
-                if(rect.width>0 && rect.height>0)
-                  push(match[0],rect.left+rect.width/2,rect.top+rect.height/2,"text");
-              } catch(_) {}
-            }
-            if ((rankOnly.test(clean)||suitOnly.test(clean)) && text.length<=6) {
-              const range=document.createRange();
-              range.selectNodeContents(node);
-              const rect=range.getBoundingClientRect();
-              if (rect.width<=0 || rect.height<=0) continue;
-              const point={value:clean,x:rect.left+rect.width/2,y:rect.top+rect.height/2};
-              if(rankOnly.test(clean)) ranks.push(point);
-              else suits.push(point);
-            }
-          }
-          // Cards may split their rank and suit into neighboring text nodes.
-          const usedSuits=new Set();
-          for(const r of ranks){
-            let best=-1,dist=1e6;
-            for(let i=0;i<suits.length;i++){
-              if(usedSuits.has(i))continue;
-              const dx=Math.abs(suits[i].x-r.x),dy=Math.abs(suits[i].y-r.y);
-              if(dx>30 || dy>40)continue;
-              const d=dx+dy*0.8;
-              if(d<dist){dist=d;best=i}
-            }
-            if(best>=0){usedSuits.add(best);push(r.value+suits[best].value,r.x,r.y,"split")}
-          }
-          // Labels and image descriptions may provide card names, independent
-          // of whether the rank is drawn as text or an SVG.
-          const attrEls=document.querySelectorAll('[aria-label],[title],img[alt]');
-          for(let i=0;i<Math.min(attrEls.length,450);i++){
-            const el=attrEls[i];
-            if(!isShown(el)) continue;
-            const label=[el.getAttribute("aria-label"),el.getAttribute("title"),el.getAttribute("alt")].filter(Boolean).join(" ");
-            if(label.length>90) continue;
-            full.lastIndex=0;
-            let m;const rect=el.getBoundingClientRect();
-            while((m=full.exec(label))!==null)push(m[0],rect.left+rect.width/2,rect.top+rect.height/2,"attribute");
-          }
-          // Remove near-duplicates from the same card, not distinct cards.
-          const points=[];
-          pts.sort((a,b)=>a.y-b.y || a.x-b.x);
-          for(const p of pts){
-            if(!points.some(q=>q.token===p.token && Math.abs(q.x-p.x)<25 && Math.abs(q.y-p.y)<26)){
-              points.push(p);
-            }
-          }
-          const heroTop=points.filter(p=>p.y/H<0.19 && p.x/W>0.20 && p.x/W<0.80).sort((a,b)=>a.x-b.x);
-          const heroBottom=points.filter(p=>p.y/H>0.72 && p.x/W>0.28 && p.x/W<0.88).sort((a,b)=>a.x-b.x);
-          const community=points.filter(p=>p.y/H>0.34 && p.y/H<0.70 && p.x/W>0.13 && p.x/W<0.88).sort((a,b)=>a.x-b.x);
-          const distinct=xs=>xs.length===new Set(xs).size;
-          let hero=[],source="not-found";
-          if(heroTop.length===2 && distinct(heroTop.map(p=>p.token))){
-            hero=heroTop.map(p=>p.token);source="top";
-          }else if(heroBottom.length===2 && distinct(heroBottom.map(p=>p.token))){
-            hero=heroBottom.map(p=>p.token);source="bottom";
-          }
-          // Last-resort fallback, useful when the small top banner is one text
-          // node without useful per-card geometry.
-          if(hero.length===0) {
-            const txt=(document.body.innerText||"").slice(0,12000);
-            const matches=(txt.match(/(?:10|[2-9AJQK])\s*[♠♣♥♦]/gi)||[])
-              .map(x=>x.toUpperCase().replace(/\s+/g,""));
-            if(matches.length===2 && distinct(matches)) {
-              hero=matches;source="text-only";
-            }
-          }
-          let board=[];
-          if(community.length>=3 && community.length<=5 && distinct(community.map(p=>p.token))){
-            board=community.map(p=>p.token);
-          }
-          // If three or more ranks are visible in the board's area but their
-          // suits are not resolved, never assume this is still pre-flop.
-          const boardHints=ranks.filter(p=>p.y/H>0.34 && p.y/H<0.70 && p.x/W>0.13 && p.x/W<0.88)
-            .sort((a,b)=>a.x-b.x).map(p=>p.value).slice(0,7);
-          return {hero,board,source,boardHint:boardHints,
-                  boardNeedsReview:board.length===0 && boardHints.length>=3};
-        })()
-        """#
-        webView.evaluateJavaScript(script) { [weak self] result,error in
+        webView.evaluateJavaScript(CardScanner.source) { [weak self] result,error in
             guard let self else {return}
             self.scanPending=false
-            if let error = error {
+            if let error {
                 self.pendingSnapshotKey=""
                 self.stableSamples=0
-                self.liveTokens=[]
-                self.liveBoard=[]
                 self.boardNeedsReview=true
-                self.liveStatus="Erro no scanner — veja diagnóstico"
-                self.diagnosticReport="Erro JavaScript: " + error.localizedDescription
+                self.liveBoard=[]
+                self.liveTokens=[]
+                self.liveStatus="Falha de leitura. Abra o diagnóstico."
+                self.diagnosticReport="Scanner JavaScript: " + error.localizedDescription
                 return
             }
             guard let data=result as? [String:Any] else {
                 self.pendingSnapshotKey=""
                 self.stableSamples=0
-                self.liveTokens=[]
                 self.liveBoard=[]
+                self.liveTokens=[]
                 self.boardNeedsReview=true
-                self.liveStatus="Resposta inesperada do scanner"
-                self.diagnosticReport="O scanner retornou um formato inesperado."
+                self.liveStatus="Resposta de scanner inválida."
+                self.diagnosticReport="A página não retornou um objeto válido."
                 return
             }
             let hero=data["hero"] as? [String] ?? []
             let board=data["board"] as? [String] ?? []
-            let hints=data["boardHint"] as? [String] ?? []
-            let pending=data["boardNeedsReview"] as? Bool ?? false
-            let source=data["source"] as? String ?? "unknown"
-            let validHero=hero.count==2 && PokerEngine.parseCards(hero.joined(separator:" "))?.count==2
-            let validBoard=[0,3,4,5].contains(board.count)
-            let all=hero+board
-            let validCards=PokerEngine.parseCards(all.joined(separator:" "))?.count == all.count
-            if !validHero || !validBoard || !validCards {
+            let hints=data["hints"] as? [String] ?? []
+            let source=data["source"] as? String ?? "none"
+            let uncertain=data["uncertain"] as? Bool ?? false
+            let info=data["diagnostics"] as? String ?? ""
+            let pot=data["pot"] as? String ?? ""
+            guard [0,2].contains(hero.count), [0,3,4,5].contains(board.count),
+                  let parsedHero=PokerEngine.parseCards(hero.joined(separator:" ")),
+                  let parsedBoard=PokerEngine.parseCards(board.joined(separator:" ")),
+                  Set(parsedHero+parsedBoard).count == parsedHero.count+parsedBoard.count else {
                 self.pendingSnapshotKey=""
                 self.stableSamples=0
-                self.liveTokens=[]
                 self.liveBoard=[]
+                self.liveTokens=[]
+                self.boardNeedsReview=true
                 self.boardRankHints=hints
-                self.boardNeedsReview=pending
-                self.liveStatus="Não foi possível validar as cartas."
+                self.liveStatus="Cartas inconsistentes. Aguardando."
+                self.diagnosticReport="Dados conflitantes: " + info
                 return
             }
-            let key=hero.joined(separator:"|") + "/" + board.joined(separator:"|") + "/" + String(pending)
-            if self.pendingSnapshotKey == key {self.stableSamples += 1}
+            let key=(hero+["/"]+board+["/"]+hints+["/"]+[String(uncertain)]).joined(separator:"|")
+            if key==self.pendingSnapshotKey {self.stableSamples+=1}
             else {self.pendingSnapshotKey=key;self.stableSamples=1}
-            // Two equal samples are normally taken ~0.6 sec apart.
             guard self.stableSamples>=2 else {return}
-            guard let parsedHero=PokerEngine.parseCards(hero.joined(separator:" ")),
-                  let parsedBoard=PokerEngine.parseCards(board.joined(separator:" ")) else {
-                self.liveTokens=[]
-                self.liveBoard=[]
-                self.boardNeedsReview=true
-                self.liveStatus="Leitura inválida, aguardando cartas novas."
-                return
-            }
-            let change=self.handSession.ingest(hero:parsedHero, board:parsedBoard, uncertain:pending)
-            self.boardRankHints=hints
+            let changed=self.tableSession.ingest(hero:parsedHero,board:parsedBoard,
+                rankHints:hints,incomplete:uncertain)
             self.liveSource=source
-            self.handSerial=self.handSession.serial
-            self.streetLabel=self.handSession.street.rawValue
-            let report="BrasaAssisten scanner / mão #" + String(self.handSerial)
-                + "\nEtapa: " + self.streetLabel
-                + "\nLeitura: " + source
-                + "\nMão (provisória): " + hero.joined(separator:" ")
-                + "\nMesa (provisória): " + board.joined(separator:" ")
-                + "\nValores comunitários candidatos: " + hints.joined(separator:" ")
-                + "\nComunidade incerta: " + String(pending)
-                + "\nTransição: " + String(describing:change)
-            if self.diagnosticReport != report {self.diagnosticReport=report}
-            switch change {
-            case .newHand, .advanced, .unchanged:
-                self.liveTokens=hero
-                self.liveBoard=board
-                self.boardNeedsReview=self.handSession.boardUncertain
-                self.liveStatus=self.boardNeedsReview
-                  ? "Comunitárias incompletas. Aguarde ou corrija."
-                  : board.isEmpty ? "Pré-flop detectado (prévia)"
-                    : "\(self.streetLabel): \(board.count) cartas (prévia)"
-            case .boardUncertain:
-                self.liveTokens=hero
-                self.liveBoard=[]
-                self.boardNeedsReview=true
-                self.liveStatus="A mesa mudou, mas as cartas não estão confirmadas."
-            case .invalid, .awaiting:
-                self.liveTokens=[]
-                self.liveBoard=[]
-                self.boardNeedsReview=true
-                self.liveStatus="Leitura inválida."
+            self.observing=self.tableSession.spectating
+            self.observedPot=pot
+            self.boardRankHints=hints
+            self.streetLabel=self.tableSession.streetLabel
+            self.handSerial=self.tableSession.serial
+            self.boardNeedsReview=self.tableSession.uncertain
+            self.liveTokens=hero
+            // On an uncertain table never feed an old flop into the advisor.
+            self.liveBoard=self.boardNeedsReview ? [] : board
+            if self.boardNeedsReview {
+                self.liveStatus="Carta(s) comunitária(s) sem naipe confirmado."
+            } else if !board.isEmpty {
+                self.liveStatus=self.streetLabel + ": " + String(board.count) + " cartas visíveis"
+            } else if hero.count==2 {
+                self.liveStatus="Duas cartas pessoais visíveis"
+            } else {
+                self.liveStatus="Acompanhando a mesa; cartas pessoais ocultas"
             }
+            self.diagnosticReport=[
+                "BrasaAssisten leitor estrutural / versão experimental",
+                "Mão: #"+String(self.handSerial),
+                "Etapa: "+self.streetLabel,
+                "Modo: "+(self.observing ? "observação/sem cartas pessoais" : "jogador"),
+                "Origem: "+source,
+                "Cartas pessoais candidatas: "+hero.joined(separator:" "),
+                "Comunitárias candidatas: "+board.joined(separator:" "),
+                "Valores candidatos: "+hints.joined(separator:" "),
+                "Leitura incerta: "+String(self.boardNeedsReview),
+                "Pote exibido: "+pot,
+                "Mudança: "+changed.rawValue,
+                "Elementos: "+info
+            ].joined(separator:"\n")
         }
     }
 
