@@ -247,8 +247,23 @@ struct ContentView: View {
                 }
             }
             if !reader.observedPot.isEmpty {
-                Text("Pote exibido: "+reader.observedPot)
+                Text("Pote exibido: BRL "+reader.observedPot)
                     .font(.caption2).foregroundStyle(.secondary)
+            }
+            if !reader.amountToCall.isEmpty {
+                Text("Valor para pagar exibido: BRL "+reader.amountToCall)
+                    .font(.caption2).foregroundStyle(.secondary)
+                if let minimum=PotMath.breakEvenCall(
+                    pot:reader.observedPot,call:reader.amountToCall) {
+                    Text(String(format:"Equidade de equilíbrio do pagamento: %.1f%%",minimum*100))
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            if !reader.visibleShowdown.isEmpty {
+                Text("Cartas reveladas no showdown (candidatas):")
+                    .font(.caption2).foregroundStyle(.secondary)
+                Text(reader.visibleShowdown.map{$0.joined(separator:" ")}.joined(separator:" • "))
+                    .font(.caption).foregroundStyle(.yellow)
             }
             Text(reader.liveStatus).font(.caption2).foregroundStyle(.secondary)
             Button {
