@@ -1,10 +1,29 @@
 import SwiftUI
+import Combine
 
 struct ContentView: View {
     @StateObject private var browser = BrasaBrowser()
     @StateObject private var reader = PageReader()
     @State private var showTraining = false
     @State private var showPanel = false
+    @State private var holeInput = ""
+    @State private var boardInput = ""
+    private var assessed: DecisionAdvice {
+        guard let hole = PokerEngine.parseCards(holeInput),
+              let board = PokerEngine.parseCards(boardInput) else {
+            return DecisionEngine.assess(hole: [], board: [])
+        }
+        return DecisionEngine.assess(hole: hole, board: board)
+    }
+    private var signal: Color {
+        switch assessed.color {
+        case "green": return Color(red: 0.17, green: 0.70, blue: 0.38)
+        case "yellow": return Color(red: 1.0, green: 0.73, blue: 0.22)
+        case "red": return Color(red: 0.93, green: 0.25, blue: 0.24)
+        default: return gold
+        }
+    }
+
     @State private var floatingOffset = CGSize.zero
     @GestureState private var floatingDrag = CGSize.zero
 
@@ -28,7 +47,7 @@ struct ContentView: View {
                                     .foregroundStyle(.orange)
                                     .frame(width: 54, height: 54)
                                     .background(.black.opacity(0.88), in: Circle())
-                                    .overlay(Circle().stroke(gold, lineWidth: 1.5))
+                                    .overlay(Circle().stroke(signal, lineWidth: 2))
                                     .shadow(color: .orange.opacity(0.4), radius: 12)
                             }
                             .accessibilityLabel("Abrir BrasaAssisten")
@@ -83,7 +102,19 @@ struct ContentView: View {
                 }
             }
         }
-        .sheet(isPresented: $showTraining) { TrainingView() }
+.sheet(isPresented: $showTraining) { TrainingView() }
+        .onReceive(Timer.publish(every: 3, on: .main, in: .common).autoconnect()) { _ in
+            reader.quickScan(browser.webView)
+        }
+    }
+
+    private func statusChip(_ title: String, color: Color, active: Bool) -> some View {
+        Text(title)
+            .font(.system(size: 11, weight: .bold))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(color.opacity(active ? 0.95 : 0.19), in: RoundedRectangle(cornerRadius: 9))
+            .foregroundStyle(active ? Color.black : Color.white.opacity(0.65))
     }
 
     private var panel: some View {
@@ -109,11 +140,53 @@ struct ContentView: View {
                 .font(.subheadline).lineLimit(1)
             Label(browser.isLoading ? "Carregando site..." : "Navegador pronto", systemImage: "checkmark.circle")
                 .font(.subheadline)
-            Text("Leitura experimental · não orienta apostas")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text("ASSISTENTE — TREINO")
+                .font(.caption).bold().foregroundStyle(gold)
+            HStack(spacing: 6) {
+                statusChip("DESISTIR", color: .red, active: assessed.color == "red")
+                statusChip("CAUTELA", color: .yellow, active: assessed.color == "yellow")
+                statusChip("FORTE", color: .green, active: assessed.color == "green")
+            }
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 4).fill(signal).frame(width: 5)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(assessed.action).font(.headline).bold()
+                    Text(assessed.strength).font(.subheadline)
+                    Text(assessed.reason).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .background(signal.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+
+            if reader.liveTokens.count == 2 {
+                Text("Leitura automática provisória: " + reader.liveTokens.joined(separator: " "))
+                    .font(.caption).foregroundStyle(.yellow)
+                Button("Confirmar essas duas cartas") {
+                    holeInput = reader.liveTokens.joined(separator: " ")
+                    boardInput = ""
+                }.buttonStyle(.bordered)
+            }
+            Text("Informe as cartas para ter uma indicação confiável.")
+                .font(.caption2).foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                TextField("Sua mão: Ae Kd", text: $holeInput)
+                    .textInputAutocapitalization(.characters).autocorrectionDisabled()
+                TextField("Mesa: 6e 5d 10a", text: $boardInput)
+                    .textInputAutocapitalization(.characters).autocorrectionDisabled()
+            }
+            .font(.caption)
+            .padding(10)
+            .background(Color.white.opacity(0.11), in: RoundedRectangle(cornerRadius: 10))
+            HStack {
+                Button("Nova mão") { holeInput = "";boardInput = "" }
+                    .font(.caption).buttonStyle(.bordered)
+                Spacer()
+                Text("a♣ c♥ e♠ d♦").font(.caption2).foregroundStyle(.secondary)
+            }
+            Text(assessed.condition).font(.caption2).foregroundStyle(.secondary)
             Divider().overlay(gold.opacity(0.45))
-            Text("LEITOR — TESTE NO IPHONE").font(.caption).bold().foregroundStyle(gold)
+            Text("DIAGNÓSTICO DO LEITOR").font(.caption).bold().foregroundStyle(gold)
             HStack {
                 Button("Inspecionar HTML") { reader.inspectPage(browser.webView) }
                     .buttonStyle(.bordered).disabled(reader.isBusy)
@@ -155,7 +228,7 @@ struct ContentView: View {
         }
         .padding(16)
         }
-        .frame(maxHeight: 360)
+        .frame(maxHeight: 450)
         .foregroundStyle(.white)
         .background(Color(red: 0.09, green: 0.065, blue: 0.07), in: RoundedRectangle(cornerRadius: 22))
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(gold.opacity(0.8), lineWidth: 1))
