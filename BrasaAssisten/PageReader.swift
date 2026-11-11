@@ -76,7 +76,7 @@ final class PageReader: ObservableObject {
 
     func inspectImage(_ webView:WKWebView) {
         guard !isBusy else{return}
-        guard webView.url?.host?.lowercased().hasSuffix("brasa.poker")==true else {
+        guard isBrasa(webView.url) else {
             status="Leitura visual disponível somente em brasa.poker.";return
         }
         isBusy=true
