@@ -109,14 +109,9 @@ struct ContentView: View {
                 .font(.subheadline).lineLimit(1)
             Label(browser.isLoading ? "Carregando site..." : "Navegador pronto", systemImage: "checkmark.circle")
                 .font(.subheadline)
-            HStack(spacing: 8) {
-                Image(systemName: "info.circle").foregroundStyle(gold)
-                Text("Leitura de cartas ainda não validada. Use os testes abaixo na mesa fictícia. O resultado é diagnóstico, não indicação de aposta.")
-                    .font(.footnote)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(12)
-            .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+            Text("Leitura experimental · não orienta apostas")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Divider().overlay(gold.opacity(0.45))
             Text("LEITOR — TESTE NO IPHONE").font(.caption).bold().foregroundStyle(gold)
             HStack {
@@ -160,7 +155,7 @@ struct ContentView: View {
         }
         .padding(16)
         }
-        .frame(maxHeight: 490)
+        .frame(maxHeight: 360)
         .foregroundStyle(.white)
         .background(Color(red: 0.09, green: 0.065, blue: 0.07), in: RoundedRectangle(cornerRadius: 22))
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(gold.opacity(0.8), lineWidth: 1))
