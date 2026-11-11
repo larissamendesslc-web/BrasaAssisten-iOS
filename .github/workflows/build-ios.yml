@@ -7,6 +7,7 @@ on:
     paths:
       - 'BrasaAssisten/**'
       - 'project.yml'
+      - 'Tests/**'
       - '.github/workflows/build-ios.yml'
 
 permissions:
