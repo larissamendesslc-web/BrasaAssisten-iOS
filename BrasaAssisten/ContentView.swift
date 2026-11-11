@@ -9,25 +9,32 @@ struct ContentView: View {
     @State private var holeInput = ""
     @State private var boardInput = ""
     private var assessed: DecisionAdvice {
-        // Explicitly confirmed cards take priority over any auto-detected candidates.
-        if !holeInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-           !boardInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            guard let hole = PokerEngine.parseCards(holeInput),
-                  let board = PokerEngine.parseCards(boardInput) else {
-                return DecisionEngine.assess(hole: [], board: [])
-            }
-            return DecisionEngine.assess(hole: hole, board: board)
+        let userHole=holeInput.trimmingCharacters(in:.whitespacesAndNewlines)
+        let userBoard=boardInput.trimmingCharacters(in:.whitespacesAndNewlines)
+        let fromAuto=userHole.isEmpty
+        let holeText=userHole.isEmpty ? reader.liveTokens.joined(separator:" ") : userHole
+        let boardText=userBoard.isEmpty ? reader.liveBoard.joined(separator:" ") : userBoard
+        if reader.boardNeedsReview && userBoard.isEmpty {
+            return DecisionAdvice(color:"neutral", action:"MESA NÃO LIDA",
+                strength:"Aguardando cartas comunitárias",
+                reason:"O jogo já mostra cartas no centro, mas os naipes não foram reconhecidos. Não vou repetir uma sugestão pré-flop.",
+                condition:"Digite as cartas da mesa ou aguarde uma leitura válida.")
         }
-        // Preview only. Text candidates don't identify reliably whose cards these are.
-        if reader.liveTokens.count == 2, let probable = PokerEngine.parseCards(reader.liveTokens.joined(separator: " ")),
-           probable.count == 2 {
-            let raw = DecisionEngine.assess(hole: probable, board: [])
-            return DecisionAdvice(color: raw.color, action: "PRÉVIA: " + raw.action,
-                                  strength: reader.liveTokens.joined(separator: " ") + " (não confirmado)",
-                                  reason: raw.reason,
-                                  condition: "Confira a mão no jogo e confirme as cartas antes de confiar na análise.")
+        guard let h=PokerEngine.parseCards(holeText), h.count==2,
+              let b=PokerEngine.parseCards(boardText),
+              [0,3,4,5].contains(b.count),
+              Set(h+b).count==h.count+b.count else {
+            return DecisionEngine.assess(hole:[],board:[])
         }
-        return DecisionEngine.assess(hole: [], board: [])
+        let result=DecisionEngine.assess(hole:h,board:b)
+        if fromAuto || (userBoard.isEmpty && !reader.liveBoard.isEmpty) {
+            return DecisionAdvice(color:result.color,
+                action:"PRÉVIA: " + result.action,
+                strength:result.strength,
+                reason:result.reason,
+                condition:"Cartas detectadas pelo leitor, ainda não confirmadas. " + result.condition)
+        }
+        return result
     }
     private var signal: Color {
         switch assessed.color {
@@ -117,8 +124,29 @@ struct ContentView: View {
             }
         }
 .sheet(isPresented: $showTraining) { TrainingView() }
-        .onReceive(Timer.publish(every: 3, on: .main, in: .common).autoconnect()) { _ in
+        .onReceive(Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()) { _ in
             reader.quickScan(browser.webView)
+        }
+        .onChange(of: reader.liveTokens) { newCards in
+            // A new pair invalidates confirmations from the previous hand.
+            if newCards.count==2 && !holeInput.isEmpty,
+               let old=PokerEngine.parseCards(holeInput),
+               let new=PokerEngine.parseCards(newCards.joined(separator:" ")),
+               old != new {
+                holeInput=""
+                boardInput=""
+            }
+        }
+        .onChange(of: reader.liveBoard) { community in
+            // Automatically resume scanning after a manually entered partial board
+            // only if the new complete read is an extension of that same board.
+            if !boardInput.isEmpty,
+               let entered=PokerEngine.parseCards(boardInput),
+               let latest=PokerEngine.parseCards(community.joined(separator:" ")),
+               latest.count>entered.count,
+               Array(latest.prefix(entered.count)) == entered {
+                boardInput=""
+            }
         }
     }
 
@@ -174,14 +202,26 @@ struct ContentView: View {
             .background(signal.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
 
             if reader.liveTokens.count == 2 {
-                Text("Leitura automática provisória: " + reader.liveTokens.joined(separator: " "))
+                Text("Sua mão (prévia): " + reader.liveTokens.joined(separator:" "))
                     .font(.caption).foregroundStyle(.yellow)
-                Button("Confirmar essas duas cartas") {
-                    holeInput = reader.liveTokens.joined(separator: " ")
-                    boardInput = ""
+                if !reader.liveBoard.isEmpty {
+                    Text("Cartas comunitárias (prévia): " + reader.liveBoard.joined(separator:" "))
+                        .font(.caption).foregroundStyle(.yellow)
+                }
+                if reader.boardNeedsReview {
+                    Text("Cartas comunitárias visíveis, mas incompletas.")
+                        .font(.caption).foregroundStyle(.orange)
+                    if !reader.boardRankHints.isEmpty {
+                        Text("Valores candidatos: " + reader.boardRankHints.joined(separator:" "))
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+                Button("Confirmar minhas duas cartas") {
+                    holeInput=reader.liveTokens.joined(separator:" ")
                 }.buttonStyle(.bordered)
             }
-            Text("Informe as cartas para ter uma indicação confiável.")
+            Text(reader.liveStatus).font(.caption2).foregroundStyle(.secondary)
+            Text("Você pode corrigir cartas manualmente. Sem confirmação, o sinal é só uma prévia.")
                 .font(.caption2).foregroundStyle(.secondary)
             HStack(spacing: 8) {
                 TextField("Sua mão: Ae Kd", text: $holeInput)
@@ -193,7 +233,7 @@ struct ContentView: View {
             .padding(10)
             .background(Color.white.opacity(0.11), in: RoundedRectangle(cornerRadius: 10))
             HStack {
-                Button("Nova mão") { holeInput = "";boardInput = "" }
+                Button("Limpar correções") { holeInput = "";boardInput = "" }
                     .font(.caption).buttonStyle(.bordered)
                 Spacer()
                 Text("a♣ c♥ e♠ d♦").font(.caption2).foregroundStyle(.secondary)
