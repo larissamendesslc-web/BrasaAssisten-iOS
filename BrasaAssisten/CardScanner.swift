@@ -279,8 +279,7 @@ enum CardScanner {
       let revealed=[];
       if(board.length===5){
         const onBoard=cards.filter(p=>row.some(q=>Math.abs(q.x-p.x)<16 && Math.abs(q.y-p.y)<20));
-        const other=cards.filter(p=>p.y/H>0.19 && p.y/H<0.87 &&
-          p.y/H<0.80 || p.y/H>0.80)
+        const other=cards.filter(p=>p.y/H>0.19 && p.y/H<0.90)
           .filter(p=>!onBoard.includes(p))
           .filter(p=>!top.includes(p)&&!bottom.includes(p));
         for(const p of other){
