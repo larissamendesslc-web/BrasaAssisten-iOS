@@ -150,6 +150,14 @@ struct ContentView: View {
             holeInput=""
             boardInput=""
         }
+        .onChange(of: reader.observing) { isObserving in
+            if isObserving {
+                // Once personal cards disappear (folded or spectating), do
+                // not continue presenting old advice as if still in the hand.
+                holeInput=""
+                boardInput=""
+            }
+        }
         .onChange(of: reader.liveTokens) { newCards in
             // A new pair invalidates confirmations from the previous hand.
             if newCards.count==2 && !holeInput.isEmpty,
