@@ -25,6 +25,7 @@ final class PageReader: ObservableObject {
     @Published var liveStatus="Aguardando cartas"
     @Published var handSerial=0
     @Published var streetLabel="Pré-flop"
+    @Published var diagnosticReport="Nenhum diagnóstico registrado."
     private var handSession=HandSession()
     private var scanPending=false
     private var pendingSnapshotKey=""
@@ -61,9 +62,13 @@ final class PageReader: ObservableObject {
           let node,n=0;
           while((node=walker.nextNode()) && n++<3200) {
             const parent=node.parentElement;
-            if (!isShown(parent) || ["SCRIPT","STYLE","NOSCRIPT"].includes(parent.tagName)) continue;
             const text=node.textContent||"";
             if (!text.trim() || text.length>100) continue;
+            const clean=text.trim().toUpperCase();
+            const isPart=rankOnly.test(clean) || suitOnly.test(clean);
+            full.lastIndex=0;
+            if (!isPart && !full.test(text)) continue;
+            if (!isShown(parent) || ["SCRIPT","STYLE","NOSCRIPT"].includes(parent.tagName)) continue;
             full.lastIndex=0;
             let match;
             while((match=full.exec(text))!==null) {
@@ -198,6 +203,15 @@ final class PageReader: ObservableObject {
             self.liveSource=source
             self.handSerial=self.handSession.serial
             self.streetLabel=self.handSession.street.rawValue
+            let report="BrasaAssisten scanner / mão #" + String(self.handSerial)
+                + "\nEtapa: " + self.streetLabel
+                + "\nLeitura: " + source
+                + "\nMão (provisória): " + hero.joined(separator:" ")
+                + "\nMesa (provisória): " + board.joined(separator:" ")
+                + "\nValores comunitários candidatos: " + hints.joined(separator:" ")
+                + "\nComunidade incerta: " + String(pending)
+                + "\nTransição: " + String(describing:change)
+            if self.diagnosticReport != report {self.diagnosticReport=report}
             switch change {
             case .newHand, .advanced, .unchanged:
                 self.liveTokens=hero
