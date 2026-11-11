@@ -57,3 +57,16 @@ A v0.7 não lia as cartas porque a função JavaScript executada a cada 0,6 segu
 - Adicionadas simulações do próprio scanner com duas cartas, flop e river (o parser e a separação espacial, não o reconhecimento real do site);
 - Quando uma chamada a JavaScript falhar, o app exibe a causa em “Copiar diagnóstico da leitura”, em vez de “Leitura indisponível” sem detalhes;
 - O reconhecimento de cartas reais no iPhone precisa ser revalidado após a compilação. Não foi afirmado suporte completo a cartas comunitárias do Brasa.
+
+## v0.9 — Leitura comunitária e observação
+
+- Novo scanner espacial `CardScanner.swift`: reúne valores e naipes de cartas visíveis, incluindo símbolos SVG quando a classe/semântica ou a silhueta permite identificar o naipe.
+- Detecta comunitárias de flop, turn e river como grupos na mesma fileira, com verificação de consistência. Não depende mais de exatamente duas cartas na página.
+- Modo observação funciona sem cartas pessoais expostas, oferecendo análise da textura da mesa. Não revela cartas ocultas.
+- `TableSession.swift` acompanha mudança de mão, avanço de rodadas, desistências e leituras parciais. Incerteza bloqueia recomendações antigas.
+- Notificações de mudanças visíveis do DOM aceleram tentativas de leitura; timer de 0,6 segundo continua como recuperação.
+- Informações visíveis opcionais: pote, valor para pagar, conta de equidade de equilíbrio e pares revelados no showdown (candidatos).
+- Painel menor, diagnóstico recolhível; erros detalhados não exigem capturas completas nem envio de credenciais.
+- A suíte de testes simula pré-flop, flop com naipe SVG, turn/river, leitura em modo espectador e casos sem naipe reconhecido.
+
+**Importante:** testes simulados verificam comportamento do algoritmo, não garantem que o Brasa Poker exponha todos os SVGs do mesmo modo. A compilação real e a leitura em um iPhone 11 ainda precisam ser verificadas. Em casos incertos o app deve indicar falta de dados, não inventar cartas ou decisões.
