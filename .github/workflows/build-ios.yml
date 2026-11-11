@@ -52,6 +52,11 @@ jobs:
           SWIFT
           swift /tmp/brasa-icon.swift
           sips -g pixelWidth -g pixelHeight BrasaAssisten/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+      - name: Validate live reader JavaScript syntax and snapshots
+        run: |
+          set -euo pipefail
+          node --version
+          python3 Tests/validate_embedded_js.py
       - name: Verify poker engine with Swift tests
         run: |
           set -euo pipefail
@@ -94,16 +99,16 @@ jobs:
           mkdir -p output/Payload
           ditto "$APP" output/Payload/BrasaAssisten.app
           cd output
-          zip -qry -X ../BrasaAssisten-v0.7-unsigned.ipa Payload
+          zip -qry -X ../BrasaAssisten-v0.8-unsigned.ipa Payload
           cd ..
-          unzip -t BrasaAssisten-v0.7-unsigned.ipa | tail -2
-          shasum -a 256 BrasaAssisten-v0.7-unsigned.ipa > BrasaAssisten-v0.7-unsigned.sha256
+          unzip -t BrasaAssisten-v0.8-unsigned.ipa | tail -2
+          shasum -a 256 BrasaAssisten-v0.8-unsigned.ipa > BrasaAssisten-v0.8-unsigned.sha256
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: BrasaAssisten-IPA-KSign
           path: |
-            BrasaAssisten-v0.7-unsigned.ipa
-            BrasaAssisten-v0.7-unsigned.sha256
+            BrasaAssisten-v0.8-unsigned.ipa
+            BrasaAssisten-v0.8-unsigned.sha256
           retention-days: 30
           if-no-files-found: error
