@@ -127,6 +127,12 @@ struct ContentView: View {
         .onReceive(Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()) { _ in
             reader.quickScan(browser.webView)
         }
+        .onChange(of: reader.handSerial) { _ in
+            // A new hand invalidates any manually confirmed cards from the
+            // previous hand. This avoids stale green/red classifications.
+            holeInput=""
+            boardInput=""
+        }
         .onChange(of: reader.liveTokens) { newCards in
             // A new pair invalidates confirmations from the previous hand.
             if newCards.count==2 && !holeInput.isEmpty,
@@ -182,8 +188,11 @@ struct ContentView: View {
                 .font(.subheadline).lineLimit(1)
             Label(browser.isLoading ? "Carregando site..." : "Navegador pronto", systemImage: "checkmark.circle")
                 .font(.subheadline)
-            Text("ASSISTENTE — TREINO")
-                .font(.caption).bold().foregroundStyle(gold)
+            HStack {
+                Text("ASSISTENTE — TREINO").font(.caption).bold().foregroundStyle(gold)
+                Spacer()
+                Text(reader.streetLabel).font(.caption).foregroundStyle(.secondary)
+            }
             HStack(spacing: 6) {
                 statusChip("DESISTIR", color: .red, active: assessed.color == "red")
                 statusChip("CAUTELA", color: .yellow, active: assessed.color == "yellow")
