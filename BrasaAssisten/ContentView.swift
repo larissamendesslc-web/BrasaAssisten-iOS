@@ -9,11 +9,25 @@ struct ContentView: View {
     @State private var holeInput = ""
     @State private var boardInput = ""
     private var assessed: DecisionAdvice {
-        guard let hole = PokerEngine.parseCards(holeInput),
-              let board = PokerEngine.parseCards(boardInput) else {
-            return DecisionEngine.assess(hole: [], board: [])
+        // Explicitly confirmed cards take priority over any auto-detected candidates.
+        if !holeInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+           !boardInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            guard let hole = PokerEngine.parseCards(holeInput),
+                  let board = PokerEngine.parseCards(boardInput) else {
+                return DecisionEngine.assess(hole: [], board: [])
+            }
+            return DecisionEngine.assess(hole: hole, board: board)
         }
-        return DecisionEngine.assess(hole: hole, board: board)
+        // Preview only. Text candidates don't identify reliably whose cards these are.
+        if reader.liveTokens.count == 2, let probable = PokerEngine.parseCards(reader.liveTokens.joined(separator: " ")),
+           probable.count == 2 {
+            let raw = DecisionEngine.assess(hole: probable, board: [])
+            return DecisionAdvice(color: raw.color, action: "PRÉVIA: " + raw.action,
+                                  strength: reader.liveTokens.joined(separator: " ") + " (não confirmado)",
+                                  reason: raw.reason,
+                                  condition: "Confira a mão no jogo e confirme as cartas antes de confiar na análise.")
+        }
+        return DecisionEngine.assess(hole: [], board: [])
     }
     private var signal: Color {
         switch assessed.color {
