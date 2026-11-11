@@ -1,17 +1,56 @@
 import SwiftUI
 import WebKit
 
+/// Observes only when the visible document changes; no private state or
+/// network traffic is intercepted. The handler holds the browser weakly.
+final class BrasaDOMEventProxy: NSObject, WKScriptMessageHandler {
+    weak var browser: BrasaBrowser?
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        guard message.name=="brasaVisibleDOMChanged", message.frameInfo.isMainFrame else {return}
+        DispatchQueue.main.async { [weak self] in
+            self?.browser?.domRevision += 1
+        }
+    }
+}
+
 @MainActor
 final class BrasaBrowser: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate {
     @Published var isLoading = true
     @Published var errorText: String?
     @Published var pageTitle = "Brasa Poker"
+    @Published var domRevision = 0
 
     let webView: WKWebView
     private static let home = URL(string: "https://brasa.poker/")!
 
     override init() {
         let configuration = WKWebViewConfiguration()
+        // Trigger a low-payload notification when visible DOM nodes are updated.
+        // The full card extraction is still performed separately by CardScanner.
+        let eventProxy=BrasaDOMEventProxy()
+        let watchScript = #"""
+        (() => {
+          if(window.__brasaAssistenObserver || !document.documentElement)return;
+          let timeout=null;
+          const announce=()=>{
+            try {window.webkit.messageHandlers.brasaVisibleDOMChanged.postMessage(1)}catch(_){}
+          };
+          const observer=new MutationObserver(()=>{
+            if(timeout)clearTimeout(timeout);
+            timeout=setTimeout(announce,180);
+          });
+          observer.observe(document.documentElement,{
+            subtree:true,childList:true,characterData:true,attributes:true,
+            attributeFilter:['class','style','aria-label']
+          });
+          window.__brasaAssistenObserver=observer;
+          announce();
+        })();
+        """#
+        configuration.userContentController.add(eventProxy,name:"brasaVisibleDOMChanged")
+        configuration.userContentController.addUserScript(
+            WKUserScript(source:watchScript,injectionTime:.atDocumentEnd,forMainFrameOnly:true))
         configuration.websiteDataStore = .default()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         configuration.defaultWebpagePreferences.preferredContentMode = .mobile
@@ -19,6 +58,7 @@ final class BrasaBrowser: NSObject, ObservableObject, WKNavigationDelegate, WKUI
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
+        eventProxy.browser=self
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.scrollView.contentInsetAdjustmentBehavior = .never
