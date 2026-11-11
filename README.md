@@ -2,11 +2,11 @@
 
 Aplicativo nativo experimental para iPhone 11: abre https://brasa.poker/ usando WKWebView e exibe um painel flutuante, sem mexer na interface original da mesa.
 
-## v0.3 — Leitor diagnóstico + treino
+## v0.4 — Leitor diagnóstico + treino
 
-- Painel flutuante com rolagem.
-- **Inspecionar HTML:** busca apenas candidatos a cartas no conteúdo visível e informa Canvas/SVG detectados. Isso não é reconhecimento confirmado.
-- **Testar imagem:** captura a WKWebView e tenta reconhecer cartas com o Vision OCR da Apple, exclusivamente no dispositivo (sem upload).
+- Painel flutuante mais compacto (altura máxima de 360 pontos) e com rolagem.
+- **Inspecionar HTML:** busca apenas candidatos a cartas no conteúdo visível e conta Canvas, SVG, imagens IMG, fundos CSS e iframes. Isso não é reconhecimento confirmado.
+- **Testar imagem:** captura a WKWebView e tenta reconhecer símbolos de cartas e pistas isoladas de valores no rodapé com o Vision OCR da Apple, exclusivamente no dispositivo (sem upload). Ainda não determina com segurança o naipe ou se a carta é sua.
 - **Treino de Hold'em:** entrada manual com duas cartas e 0/3/4/5 comunitárias; avalia combinações e estima equidade por 1.200 cenários aleatórios, entre 1 e 8 adversários.
 - **Testes matemáticos:** em Tests/main.swift, executados antes da geração do IPA no GitHub Actions.
 - Convenção: a=paus, c=copas, e=espadas, d=ouros. Exemplo: Ae Kd.
