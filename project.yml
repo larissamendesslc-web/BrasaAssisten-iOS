@@ -19,8 +19,8 @@ targets:
       - BrasaAssisten
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.brasaassisten.browser
-        INFOPLIST_KEY_CFBundleDisplayName: BrasaAssisten
+        PRODUCT_BUNDLE_IDENTIFIER: com.brasaassisten.browser.beta
+        INFOPLIST_KEY_CFBundleDisplayName: BrasaAssisten Beta
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIRequiresFullScreen: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
