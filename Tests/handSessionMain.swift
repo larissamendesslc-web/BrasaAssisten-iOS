@@ -8,6 +8,7 @@ var session=HandSession()
 verify(session.ingest(hero:hand("Ke Kd"),board:[],uncertain:false) == .newHand, "starts hand")
 let first=session.serial
 verify(session.street == .preflop, "preflop")
+verify(session.ingest(hero:hand("Kd Ke"),board:[],uncertain:false) == .unchanged, "reversed card display is same hand")
 verify(session.ingest(hero:hand("Ke Kd"),board:hand("Qc 7e 6c"),uncertain:false) == .advanced, "reads flop")
 verify(session.street == .flop, "flop")
 verify(session.ingest(hero:hand("Ke Kd"),board:hand("Qc 7e 6c 3c"),uncertain:false) == .advanced, "reads turn")
