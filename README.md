@@ -89,3 +89,11 @@ Agora, ao tocar no ícone de chama, aparece um painel compacto com o sinal princ
 - Não depende de IA online ou chave de API. É matemática e regras locais, não a inteligência geral do ChatGPT.
 - Sem sugestões quando os dados forem insuficientes. O bundle id beta permanece para atualizar o Beta sem substituir o app antigo.
 - Workflow valida os testes, compila IPA não assinado e o publica via GitHub Releases.
+
+## 1.0.1 — Ajustes após as capturas reais do iPhone
+
+- A7 offsuit e outros ases marginais não recebem mais fold categórico sem posição ou apostas anteriores; o motor informa a vulnerabilidade do kicker.
+- Mãos fracas com a possibilidade de mesa gratuita são descritas como "MESA" e não "DESISTIR".
+- Análise expandida mais baixa e rolável, para não esconder tanto a mesa.
+- Percentual da simulação apresentado como aproximação inteira, explicitamente contra mãos hipotéticas; não é probabilidade garantida contra os adversários reais.
+- Testes de regressão adicionados para A7, opção de mesa gratuita e A7 no flop com dois pares.
