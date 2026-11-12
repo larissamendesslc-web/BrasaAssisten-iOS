@@ -163,7 +163,7 @@ struct SideHUD: View {
         }
         .padding(.horizontal, 7)
         .padding(.vertical, 6)
-        .frame(width: SideHUDPlacement.fullWidth)
+        .frame(width: CGFloat(SideHUDPlacement.fullWidth))
         .fixedSize(horizontal: true, vertical: true)
         .foregroundStyle(.white)
         .background(dark.opacity(0.96),
@@ -194,7 +194,7 @@ struct SideHUD: View {
                     .font(.system(size: 10))
             }
             .foregroundStyle(gold)
-            .frame(width: SideHUDPlacement.collapsedWidth, height: 52)
+            .frame(width: CGFloat(SideHUDPlacement.collapsedWidth), height: 52)
             .background(dark.opacity(0.96),
                         in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8)
