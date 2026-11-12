@@ -18,6 +18,9 @@ struct ContentView: View {
     @State private var opponents = 1
     @State private var floatingOffset = CGSize.zero
     @GestureState private var floatingDrag = CGSize.zero
+    @AppStorage("brasa.v2.sideCollapsed") private var sideCollapsed = false
+    @AppStorage("brasa.v2.sideOnLeft") private var sideOnLeft = false
+    @AppStorage("brasa.v2.sideOffset") private var sideOffset = 0.0
     @State private var panelLift: CGFloat = 0
     @GestureState private var panelDrag: CGFloat = 0
 
@@ -102,7 +105,7 @@ struct ContentView: View {
                             Spacer()
                             Button {
                                 withAnimation(.spring(response:0.3)) {
-                                    showDetails=false
+                                    showDetails=true
                                     isPanelOpen=true
                                 }
                             } label: {
@@ -156,6 +159,33 @@ struct ContentView: View {
                     .padding(20)
                     .background(background,in:RoundedRectangle(cornerRadius:18))
                     .padding(20)
+                }
+            }
+            .overlay(alignment: sideOnLeft ? .leading : .trailing) {
+                // Keep the side HUD on top of the site but outside its touch
+                // targets everywhere except the 86pt native HUD surface.
+                // The website's original controls and card DOM are untouched.
+                if !isPanelOpen {
+                    SideHUD(
+                        phase: reader.streetLabel,
+                        personalCards: reader.liveTokens,
+                        communityCards: reader.liveBoard,
+                        observing: reader.observing,
+                        reviewNeeded: reader.boardNeedsReview,
+                        tone: insight.tone,
+                        action: insight.action,
+                        viewportHeight: geometry.size.height,
+                        collapsed: $sideCollapsed,
+                        onLeft: $sideOnLeft,
+                        verticalOffset: $sideOffset
+                    ) {
+                        withAnimation(.spring(response:0.3)) {
+                            showDetails = true
+                            isPanelOpen = true
+                        }
+                    }
+                    .padding(.leading, sideOnLeft ? 2 : 0)
+                    .padding(.trailing, sideOnLeft ? 0 : 2)
                 }
             }
         }
