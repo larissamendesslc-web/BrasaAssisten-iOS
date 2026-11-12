@@ -78,3 +78,14 @@ A v0.9 usa o identificador `com.brasaassisten.browser.beta` e o nome **BrasaAssi
 ## v0.9.1 — painel de leitura rápida
 
 Agora, ao tocar no ícone de chama, aparece um painel compacto com o sinal principal, a etapa (flop/turn/river), as cartas próprias quando visíveis, as comunitárias e o pote. O painel compacto fica acima dos controles de aposta do navegador. O botão **Detalhes e correções** mantém o painel completo e os diagnósticos acessíveis; dentro dele, **Compactar painel** volta ao resumo. Não há alterações no motor de reconhecimento nesta revisão. A versão Beta permanece isolada do aplicativo anterior.
+
+## 1.0.0 — Interface e motor de análise revistos
+
+- Painel padrão compacto com três sinais coloridos e barra de decisão de altura fixa.
+- Análise detalhada opcional com explicação por fase, ameaças da mesa, alternativas, pote e custo de pagamento.
+- Novo PokerCoach.swift: pares comunitários, overpair, top pair, projetos de flush/sequência, mãos compartilhadas e riscos do board.
+- Simulação Monte Carlo local em segundo plano, recalculada somente se cartas ou número hipotético de oponentes mudarem; ela usa mãos aleatórias, não ranges de apostas reais.
+- Diagnósticos HTML e OCR removidos da interface principal; toque longo de 1,3 segundo no título BrasaAssisten para acessá-los.
+- Não depende de IA online ou chave de API. É matemática e regras locais, não a inteligência geral do ChatGPT.
+- Sem sugestões quando os dados forem insuficientes. O bundle id beta permanece para atualizar o Beta sem substituir o app antigo.
+- Workflow valida os testes, compila IPA não assinado e o publica via GitHub Releases.
