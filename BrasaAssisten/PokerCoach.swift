@@ -109,6 +109,20 @@ enum PokerCoach {
                     confidence:confidence,street:street,equity:equity,threshold:threshold,
                     hand:hole.map(\.description).joined(separator:" "))
             }
+            // Offsuit Ax with a middle kicker is not a premium hand, but
+            // a categorical fold is misleading when position, previous bets
+            // and check availability have not been observed.
+            let marginalAce = ranks[0] == 14 &&
+                (ranks[1] >= 6 || suited)
+            if marginalAce && !playable {
+                return report("yellow","CAUTELA","Ás com kicker vulnerável",
+                    "Seu ás pode estar dominado por outro ás com kicker mais alto. A posição e o preço para continuar são decisivos.",
+                    alternatives:["Em posição inicial e contra aumentos, esta mão normalmente perde valor.",
+                                  "Em posição final e sem aumento, existem cenários para continuar com cautela.",
+                                  "Se puder dar mesa sem pagar, veja o flop sem custo adicional."],
+                    confidence:confidence,street:street,equity:equity,threshold:threshold,
+                    hand:hole.map(\.description).joined(separator:" "))
+            }
             if playable {
                 return report("yellow","CAUTELA","Mão inicial jogável",
                     "Potencial de jogo, mas a posição e o preço para entrar são decisivos.",
@@ -117,8 +131,16 @@ enum PokerCoach {
                     confidence:confidence,street:street,equity:equity,threshold:threshold,
                     hand:hole.map(\.description).joined(separator:" "))
             }
+            if toCall == 0 {
+                return report("yellow","MESA","Mão fraca • sem custo",
+                    "Você pode ver a próxima etapa sem pagar. Dar mesa não equivale a apostar com esta mão.",
+                    alternatives:["Reavalie se houver aumento depois de sua vez.",
+                                  "A posição ainda é importante."],
+                    confidence:confidence,street:street,equity:equity,threshold:threshold,
+                    hand:hole.map(\.description).joined(separator:" "))
+            }
             return report("red","DESISTIR","Mão inicial fraca",
-                "Pouca força imediata ou baixa conexão entre as cartas.",
+                "Pouca força imediata ou baixa conexão entre as cartas. Este é um sinal conservador, não uma decisão definitiva sem o histórico de apostas.",
                 alternatives:["Se a mesa for gratuita, não é necessário desistir.",
                               "Evite pagar um aumento apenas para ver o flop."],
                 confidence:confidence,street:street,equity:equity,threshold:threshold,
