@@ -11,6 +11,7 @@ struct SideHUD: View {
     let reviewNeeded: Bool
     let tone: String
     let action: String
+    let risk: RiskReport
     let viewportHeight: CGFloat
 
     @Binding var collapsed: Bool
@@ -25,11 +26,9 @@ struct SideHUD: View {
     private let dark = Color(red: 0.09, green: 0.064, blue: 0.074)
 
     private var color: Color {
-        guard !reviewNeeded else { return gold }
-        switch tone {
-        case "red": return Color(red: 0.94, green: 0.23, blue: 0.27)
-        case "yellow": return Color(red: 1.0, green: 0.70, blue: 0.20)
-        case "green": return Color(red: 0.14, green: 0.80, blue: 0.38)
+        switch risk.level {
+        case "danger": return Color(red: 0.88, green: 0.30, blue: 0.27)
+        case "blocked": return Color(red: 0.46, green: 0.46, blue: 0.49)
         default: return gold
         }
     }
@@ -41,18 +40,10 @@ struct SideHUD: View {
         return "AGUARDANDO"
     }
 
-    private var signalLabel: String {
-        guard !reviewNeeded else { return "INCOMPLETA" }
-        switch tone {
-        case "red": return "DESISTIR"
-        case "yellow": return "CAUTELA"
-        case "green": return "FORTE"
-        default: return "ANALISANDO"
-        }
-    }
+    private var signalLabel: String { risk.label }
 
     private var activeHeight: Double {
-        collapsed ? 52 : 190
+        collapsed ? 52 : 221
     }
 
     private var dragHandle: some View {
@@ -144,15 +135,27 @@ struct SideHUD: View {
                 .padding(.vertical, 5)
                 .background(color, in: RoundedRectangle(cornerRadius: 6))
 
-            Text(status)
+            Text(risk.level == "blocked" ? "CONFERIR CARTAS" : status)
                 .font(.system(size: 7, weight: .bold))
                 .foregroundStyle(.white.opacity(0.7))
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
 
-            Text(action)
+            Text(risk.hand)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(gold)
+                .lineLimit(2)
+                .minimumScaleFactor(0.65)
+
+            Text(risk.shortAlert)
                 .font(.system(size: 8, weight: .medium))
-                .foregroundStyle(.white.opacity(0.88))
+                .foregroundStyle(.white.opacity(0.9))
+                .lineLimit(3)
+                .minimumScaleFactor(0.72)
+
+            Text("NÃO INDICA APOSTAS")
+                .font(.system(size: 7, weight: .bold))
+                .foregroundStyle(.white.opacity(0.65))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
 
@@ -187,7 +190,7 @@ struct SideHUD: View {
             verticalOffset = SideHUDPlacement.clamp(
                 verticalOffset,
                 viewportHeight: Double(viewportHeight),
-                hudHeight: 190
+                hudHeight: 221
             )
         } label: {
             VStack(spacing: 4) {
