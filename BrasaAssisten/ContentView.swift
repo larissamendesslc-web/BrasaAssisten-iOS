@@ -341,7 +341,7 @@ struct ContentView: View {
                 .padding(.horizontal,13)
                 .padding(.bottom,14)
             }
-            .frame(maxHeight:380)
+            .frame(maxHeight:260)
         }
         .foregroundStyle(.white)
         .background(background,in:RoundedRectangle(cornerRadius:18))
@@ -420,12 +420,12 @@ struct ContentView: View {
     private var detailOdds: some View {
         VStack(alignment:.leading,spacing:4) {
             if let value=equityEstimator.equity, hole?.count==2 {
-                Text(String(format:"Equidade simulada: %.1f%%",value*100))
+                Text(String(format:"Equidade simulada: ≈ %.0f%%",value*100))
                     .font(.subheadline).bold()
-                Text("Contra \(opponents) mão(s) aleatória(s), não contra os ranges reais.")
+                Text("650 simulações contra \(opponents) adversário(s) hipotético(s), não contra os jogadores reais.")
                     .font(.caption2).foregroundStyle(.white.opacity(0.6))
                 if let required=insight.callThreshold {
-                    Text(String(format:"Equidade mínima para pagar: %.1f%%",required*100))
+                    Text(String(format:"Equidade matemática de equilíbrio: %.1f%%",required*100))
                         .font(.caption2).foregroundStyle(gold)
                 }
             } else if equityEstimator.computing {
