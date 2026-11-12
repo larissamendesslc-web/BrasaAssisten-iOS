@@ -150,6 +150,12 @@ struct SideHUD: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
 
+            Text(action)
+                .font(.system(size: 8, weight: .medium))
+                .foregroundStyle(.white.opacity(0.88))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+
             Button(action: openAnalysis) {
                 Image(systemName: "flame.fill")
                     .font(.system(size: 15))
