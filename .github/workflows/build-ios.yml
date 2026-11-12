@@ -11,7 +11,7 @@ on:
       - '.github/workflows/build-ios.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -71,6 +71,12 @@ jobs:
           cp Tests/decisionMain.swift /tmp/main.swift
           swiftc BrasaAssisten/PokerEngine.swift BrasaAssisten/DecisionEngine.swift /tmp/main.swift -o /tmp/brasa-advice-tests
           /tmp/brasa-advice-tests
+      - name: Verify intelligent offline poker coach
+        run: |
+          set -euo pipefail
+          cp Tests/pokerCoachMain.swift /tmp/main.swift
+          swiftc BrasaAssisten/PokerEngine.swift BrasaAssisten/TableInsights.swift BrasaAssisten/PokerCoach.swift /tmp/main.swift -o /tmp/brasa-poker-coach-tests
+          /tmp/brasa-poker-coach-tests
       - name: Verify real-hand lifecycle regression tests
         run: |
           set -euo pipefail
@@ -114,16 +120,30 @@ jobs:
           mkdir -p output/Payload
           ditto "$APP" output/Payload/BrasaAssisten.app
           cd output
-          zip -qry -X ../BrasaAssisten-v0.9.1-unsigned.ipa Payload
+          zip -qry -X ../BrasaAssisten-v1.0.0-unsigned.ipa Payload
           cd ..
-          unzip -t BrasaAssisten-v0.9.1-unsigned.ipa | tail -2
-          shasum -a 256 BrasaAssisten-v0.9.1-unsigned.ipa > BrasaAssisten-v0.9.1-unsigned.sha256
+          unzip -t BrasaAssisten-v1.0.0-unsigned.ipa | tail -2
+          shasum -a 256 BrasaAssisten-v1.0.0-unsigned.ipa > BrasaAssisten-v1.0.0-unsigned.sha256
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: BrasaAssisten-IPA-KSign
           path: |
-            BrasaAssisten-v0.9.1-unsigned.ipa
-            BrasaAssisten-v0.9.1-unsigned.sha256
+            BrasaAssisten-v1.0.0-unsigned.ipa
+            BrasaAssisten-v1.0.0-unsigned.sha256
           retention-days: 30
           if-no-files-found: error
+
+      - name: Publish direct-download iPhone Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view v1.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload v1.0.0 BrasaAssisten-v1.0.0-unsigned.ipa BrasaAssisten-v1.0.0-unsigned.sha256 --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create v1.0.0 BrasaAssisten-v1.0.0-unsigned.ipa BrasaAssisten-v1.0.0-unsigned.sha256 \
+              --repo "$GITHUB_REPOSITORY" --title "BrasaAssisten 1.0 — interface e análise renovadas" \
+              --target "$GITHUB_SHA" \
+              --notes "IPA não assinado para assinatura com KSign. HUD compacto, análise contextual offline, simulação de equidade e modo observador. Compilação automatizada; leitura no Brasa real exige conferência no iPhone."
+          fi
