@@ -94,14 +94,7 @@ enum RiskInspector {
                     case 1: short="Par superior possível"
                     default: short="Carta alta superior possível"
                     }
-                    if !alerts.contains(where:{$0.localizedCaseInsensitiveContains(
-                        cat == 4 ? "sequência superior" :
-                        cat == 8 ? "straight flush" :
-                        cat == 7 ? "quadra" :
-                        cat == 6 ? "full house" :
-                        cat == 5 ? "flush" : short)}) {
-                        alerts.append(short)
-                    }
+                    if !alerts.contains(short) { alerts.append(short) }
                 }
             }
         } else {
