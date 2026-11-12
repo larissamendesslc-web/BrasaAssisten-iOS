@@ -43,7 +43,7 @@ struct SideHUD: View {
     private var signalLabel: String { risk.label }
 
     private var activeHeight: Double {
-        collapsed ? 52 : 221
+        collapsed ? 52 : 264
     }
 
     private var dragHandle: some View {
@@ -190,7 +190,7 @@ struct SideHUD: View {
             verticalOffset = SideHUDPlacement.clamp(
                 verticalOffset,
                 viewportHeight: Double(viewportHeight),
-                hudHeight: 221
+                hudHeight: 264
             )
         } label: {
             VStack(spacing: 4) {
