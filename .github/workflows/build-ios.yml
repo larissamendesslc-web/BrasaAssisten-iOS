@@ -65,6 +65,12 @@ jobs:
           set -euo pipefail
           swiftc BrasaAssisten/PokerEngine.swift Tests/main.swift -o /tmp/brasa-engine-tests
           /tmp/brasa-engine-tests
+      - name: Verify risk inspector on the losing screenshot
+        run: |
+          set -euo pipefail
+          cp Tests/riskInspectorMain.swift /tmp/main.swift
+          swiftc BrasaAssisten/PokerEngine.swift BrasaAssisten/RiskInspector.swift /tmp/main.swift -o /tmp/brasa-risk-tests
+          /tmp/brasa-risk-tests
       - name: Verify three-color advice with Swift tests
         run: |
           set -euo pipefail
