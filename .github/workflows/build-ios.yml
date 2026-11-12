@@ -95,6 +95,12 @@ jobs:
           cp Tests/potMathMain.swift /tmp/main.swift
           swiftc BrasaAssisten/PotMath.swift /tmp/main.swift -o /tmp/brasa-potmath
           /tmp/brasa-potmath
+      - name: Verify safe persistent HUD placement on iPhone
+        run: |
+          set -euo pipefail
+          cp Tests/sideHUDPlacementMain.swift /tmp/main.swift
+          swiftc BrasaAssisten/SideHUDPlacement.swift /tmp/main.swift -o /tmp/brasa-side-hud-tests
+          /tmp/brasa-side-hud-tests
       - name: Generate project
         run: xcodegen generate --spec project.yml
       - name: Build for physical iPhone without signing
@@ -120,17 +126,17 @@ jobs:
           mkdir -p output/Payload
           ditto "$APP" output/Payload/BrasaAssisten.app
           cd output
-          zip -qry -X ../BrasaAssisten-v1.0.1-unsigned.ipa Payload
+          zip -qry -X ../BrasaAssisten-v2.0.0-unsigned.ipa Payload
           cd ..
-          unzip -t BrasaAssisten-v1.0.1-unsigned.ipa | tail -2
-          shasum -a 256 BrasaAssisten-v1.0.1-unsigned.ipa > BrasaAssisten-v1.0.1-unsigned.sha256
+          unzip -t BrasaAssisten-v2.0.0-unsigned.ipa | tail -2
+          shasum -a 256 BrasaAssisten-v2.0.0-unsigned.ipa > BrasaAssisten-v2.0.0-unsigned.sha256
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: BrasaAssisten-IPA-KSign
           path: |
-            BrasaAssisten-v1.0.1-unsigned.ipa
-            BrasaAssisten-v1.0.1-unsigned.sha256
+            BrasaAssisten-v2.0.0-unsigned.ipa
+            BrasaAssisten-v2.0.0-unsigned.sha256
           retention-days: 30
           if-no-files-found: error
 
@@ -139,11 +145,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view v1.0.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload v1.0.1 BrasaAssisten-v1.0.1-unsigned.ipa BrasaAssisten-v1.0.1-unsigned.sha256 --repo "$GITHUB_REPOSITORY" --clobber
+          if gh release view v2.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload v2.0.0 BrasaAssisten-v2.0.0-unsigned.ipa BrasaAssisten-v2.0.0-unsigned.sha256 --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create v1.0.1 BrasaAssisten-v1.0.1-unsigned.ipa BrasaAssisten-v1.0.1-unsigned.sha256 \
-              --repo "$GITHUB_REPOSITORY" --title "BrasaAssisten 1.0.1 — interface e análise renovadas" \
+            gh release create v2.0.0 BrasaAssisten-v2.0.0-unsigned.ipa BrasaAssisten-v2.0.0-unsigned.sha256 \
+              --repo "$GITHUB_REPOSITORY" --title "BrasaAssisten v2.0 — painel lateral permanente" \
               --target "$GITHUB_SHA" \
-              --notes "IPA não assinado para assinatura com KSign. HUD compacto, análise contextual offline, simulação de equidade e modo observador. Compilação automatizada; leitura no Brasa real exige conferência no iPhone."
+              --notes "IPA não assinado para assinatura com KSign. HUD lateral móvel e recolhível, bolinha flutuante, análise contextual offline, simulação de equidade e modo observador. Compilação automatizada; leitura no Brasa real exige conferência no iPhone."
           fi
