@@ -97,3 +97,17 @@ Agora, ao tocar no ícone de chama, aparece um painel compacto com o sinal princ
 - Análise expandida mais baixa e rolável, para não esconder tanto a mesa.
 - Percentual da simulação apresentado como aproximação inteira, explicitamente contra mãos hipotéticas; não é probabilidade garantida contra os adversários reais.
 - Testes de regressão adicionados para A7, opção de mesa gratuita e A7 no flop com dois pares.
+
+## 2.0.0 — Official UI v2 (iPhone)
+
+- Novo HUD lateral nativo de 86 pontos com cartas pessoais, fase, cartas comunitárias, status de leitura, indicador vermelho/amarelo/verde e ação resumida.
+- Aba recolhida de 26 pontos, expandida pelo toque; a preferência e o lado esquerdo/direito ficam salvos no aparelho.
+- Alça superior permite arrastar verticalmente, com limite que preserva cabeçalho e botões inferiores.
+- O botão flutuante original de chama foi preservado e agora abre diretamente a análise completa.
+- O leitor de cartas, o modo espectador, o controle de sessões, as análises do PokerCoach e a simulação de equidade permanecem com o código da v1.0.1.
+- Somente a área visível do HUD recebe toques; o restante da mesa usa a WKWebView original.
+- A barra superior do **site Brasa** não é escondida automaticamente: alterações visuais no DOM poderiam prejudicar o reconhecimento de cartas. Depois de validar a leitura no dispositivo, pode-se avaliar uma opção de ocultação estritamente visual e reversível.
+- Os diagnósticos permanecem acessíveis apenas por toque longo no título do painel completo.
+- Testes novos validam o posicionamento do HUD e seus limites para diferentes alturas de tela.
+
+O IPA é gerado por GitHub Actions para assinatura local no KSign. Não há garantia de vantagem, rentabilidade ou de leitura perfeita em partidas ao vivo.
