@@ -322,145 +322,21 @@ struct ContentView: View {
 
     private var detailPanel: some View {
         VStack(alignment:.leading,spacing:0) {
-            header.padding(.horizontal,13).padding(.top,12).padding(.bottom,8)
+            header
+                .padding(.horizontal,13)
+                .padding(.top,12)
+                .padding(.bottom,8)
             ScrollView {
-                VStack(alignment:.leading,spacing:11) {
-                    HStack(spacing:5) {
-                        statusChip("DESISTIR","red")
-                        statusChip("CAUTELA","yellow")
-                        statusChip("FORTE","green")
-                    }
-                    HStack(alignment:.top,spacing:10) {
-                        RoundedRectangle(cornerRadius:3)
-                            .fill(signal).frame(width:5,height:58)
-                        VStack(alignment:.leading,spacing:4) {
-                            Text(insight.action).font(.title3).bold()
-                            Text(insight.title).font(.subheadline)
-                            Text(insight.reason)
-                                .font(.caption).foregroundStyle(.white.opacity(0.78))
-                        }
-                        Spacer(minLength:0)
-                    }
-                    .padding(10)
-                    .background(signal.opacity(0.12),
-                        in:RoundedRectangle(cornerRadius:11))
-
-                    HStack {
-                        Label(reader.observing ? "Observando" : "Jogando",
-                              systemImage:reader.observing ? "eye" : "suit.spade.fill")
-                        Spacer()
-                        Text(insight.confidence)
-                            .lineLimit(1).minimumScaleFactor(0.78)
-                    }
-                    .font(.system(size:11))
-                    .foregroundStyle(.white.opacity(0.70))
-                    if !reader.liveTokens.isEmpty {
-                        Text("Suas cartas: "+reader.liveTokens.joined(separator:" "))
-                            .font(.subheadline).foregroundStyle(gold)
-                    }
-                    if !reader.liveBoard.isEmpty {
-                        Text("Comunitárias: "+reader.liveBoard.joined(separator:" "))
-                            .font(.subheadline).foregroundStyle(gold)
-                    }
-                    if reader.boardNeedsReview {
-                        Text("Alguns naipes não foram confirmados. Valores: "+
-                             reader.boardRankHints.joined(separator:" "))
-                            .font(.caption).foregroundStyle(.orange)
-                    }
-                    if !reader.observedPot.isEmpty {
-                        HStack {
-                            Text("Pote BRL "+reader.observedPot)
-                            Spacer()
-                            if !reader.amountToCall.isEmpty {
-                                Text("Pagar BRL "+reader.amountToCall)
-                            }
-                        }
-                        .font(.caption).foregroundStyle(.white.opacity(0.8))
-                    }
-
-                    if let value=equityEstimator.equity, hole?.count==2 {
-                        VStack(alignment:.leading,spacing:3) {
-                            Text(String(format:"Equidade simulada: %.1f%%",value*100))
-                                .font(.subheadline).bold()
-                            Text("Contra \(opponents) mão(s) aleatória(s), não contra o range real dos jogadores.")
-                                .font(.caption2).foregroundStyle(.white.opacity(0.6))
-                            if let threshold=insight.callThreshold {
-                                Text(String(format:"Preço mínimo de equilíbrio: %.1f%%",threshold*100))
-                                    .font(.caption2).foregroundStyle(gold)
-                            }
-                        }
-                    } else if equityEstimator.computing {
-                        Text("Calculando equidade matemática…").font(.caption)
-                    }
-
-                    if !insight.alerts.isEmpty {
-                        Text("RISCOS DA MESA")
-                            .font(.caption).bold().foregroundStyle(gold)
-                        ForEach(insight.alerts,id:\.self) { item in
-                            Label(item,systemImage:"exclamationmark.triangle")
-                                .font(.caption2)
-                                .foregroundStyle(.white.opacity(0.78))
-                        }
-                    }
-                    if !insight.alternatives.isEmpty {
-                        Text("POSSIBILIDADES")
-                            .font(.caption).bold().foregroundStyle(gold)
-                        ForEach(insight.alternatives,id:\.self) { item in
-                            Text("• "+item)
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.78))
-                        }
-                    }
-
-                    HStack {
-                        Text("Simular contra:")
-                            .font(.caption).foregroundStyle(.secondary)
-                        Picker("Mãos aleatórias",selection:$opponents) {
-                            ForEach(1...5,id:\.self) { number in
-                                Text("\(number)").tag(number)
-                            }
-                        }
-                        .pickerStyle(.menu).tint(gold)
-                        Spacer()
-                        Button(showCorrections ? "Ocultar ajustes" : "Ajustar cartas") {
-                            withAnimation(.easeInOut(duration:0.2)){
-                                showCorrections.toggle()
-                            }
-                        }
-                        .font(.caption).foregroundStyle(gold)
-                    }
-
-                    if showCorrections {
-                        TextField("Suas cartas: Ke Kd",text:$holeInput)
-                            .textInputAutocapitalization(.characters)
-                            .autocorrectionDisabled()
-                            .textFieldStyle(.roundedBorder)
-                            .foregroundStyle(.black)
-                        TextField("Comunitárias: Qd 7e 6c",text:$boardInput)
-                            .textInputAutocapitalization(.characters)
-                            .autocorrectionDisabled()
-                            .textFieldStyle(.roundedBorder)
-                            .foregroundStyle(.black)
-                        HStack {
-                            Text("a♣ c♥ e♠ d♦")
-                                .font(.caption2).foregroundStyle(.secondary)
-                            Spacer()
-                            Button("Limpar ajustes") {
-                                holeInput=""
-                                boardInput=""
-                            }
-                            .font(.caption2).foregroundStyle(gold)
-                        }
-                    }
-                    if !reader.visibleShowdown.isEmpty {
-                        Text("Cartas reveladas publicamente:")
-                            .font(.caption).foregroundStyle(gold)
-                        Text(reader.visibleShowdown.map{$0.joined(separator:" ")}
-                            .joined(separator:" • "))
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    Text("Análise educacional: nenhuma decisão ou ganho é garantido.")
-                        .font(.caption2).foregroundStyle(.white.opacity(0.47))
+                VStack(alignment:.leading,spacing:12) {
+                    detailSummary
+                    detailCards
+                    detailOdds
+                    detailWarnings
+                    detailControls
+                    detailShowdown
+                    Text("Análise educacional. Nenhuma jogada ou ganho é garantido.")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.47))
                 }
                 .padding(.horizontal,13)
                 .padding(.bottom,14)
@@ -472,6 +348,178 @@ struct ContentView: View {
         .overlay(RoundedRectangle(cornerRadius:18)
             .stroke(gold.opacity(0.85),lineWidth:1))
         .shadow(color:.black.opacity(0.36),radius:9)
+    }
+
+    private var detailSummary: some View {
+        VStack(alignment:.leading,spacing:9) {
+            HStack(spacing:5) {
+                statusChip("DESISTIR","red")
+                statusChip("CAUTELA","yellow")
+                statusChip("FORTE","green")
+            }
+            HStack(alignment:.top,spacing:10) {
+                RoundedRectangle(cornerRadius:3)
+                    .fill(signal)
+                    .frame(width:5,height:58)
+                VStack(alignment:.leading,spacing:3) {
+                    Text(insight.action).font(.title3).bold()
+                    Text(insight.title).font(.subheadline)
+                    Text(insight.reason)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.78))
+                }
+                Spacer(minLength:0)
+            }
+            .padding(10)
+            .background(signal.opacity(0.12),
+                        in:RoundedRectangle(cornerRadius:11))
+        }
+    }
+
+    private var detailCards: some View {
+        VStack(alignment:.leading,spacing:7) {
+            HStack {
+                Label(reader.observing ? "Observando" : "Jogando",
+                      systemImage:reader.observing ? "eye" : "suit.spade.fill")
+                Spacer(minLength:0)
+                Text(insight.confidence)
+                    .lineLimit(1).minimumScaleFactor(0.75)
+            }
+            .font(.system(size:11))
+            .foregroundStyle(.white.opacity(0.70))
+            if !reader.liveTokens.isEmpty {
+                Text("Suas cartas: " + reader.liveTokens.joined(separator:" "))
+                    .font(.subheadline)
+                    .foregroundStyle(gold)
+            }
+            if !reader.liveBoard.isEmpty {
+                Text("Comunitárias: " + reader.liveBoard.joined(separator:" "))
+                    .font(.subheadline)
+                    .foregroundStyle(gold)
+            }
+            if reader.boardNeedsReview {
+                Text("Naipes não confirmados. Valores: " +
+                     reader.boardRankHints.joined(separator:" "))
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+            if !reader.observedPot.isEmpty {
+                HStack {
+                    Text("Pote BRL " + reader.observedPot)
+                    Spacer()
+                    if !reader.amountToCall.isEmpty {
+                        Text("Pagar BRL " + reader.amountToCall)
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.8))
+            }
+        }
+    }
+
+    private var detailOdds: some View {
+        VStack(alignment:.leading,spacing:4) {
+            if let value=equityEstimator.equity, hole?.count==2 {
+                Text(String(format:"Equidade simulada: %.1f%%",value*100))
+                    .font(.subheadline).bold()
+                Text("Contra \(opponents) mão(s) aleatória(s), não contra os ranges reais.")
+                    .font(.caption2).foregroundStyle(.white.opacity(0.6))
+                if let required=insight.callThreshold {
+                    Text(String(format:"Equidade mínima para pagar: %.1f%%",required*100))
+                        .font(.caption2).foregroundStyle(gold)
+                }
+            } else if equityEstimator.computing {
+                Text("Calculando simulação matemática…")
+                    .font(.caption)
+            }
+        }
+    }
+
+    private var detailWarnings: some View {
+        VStack(alignment:.leading,spacing:5) {
+            if !insight.alerts.isEmpty {
+                Text("RISCOS DA MESA")
+                    .font(.caption).bold().foregroundStyle(gold)
+                ForEach(insight.alerts,id:\.self) { warning in
+                    Label(warning,systemImage:"exclamationmark.triangle")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.78))
+                }
+            }
+            if !insight.alternatives.isEmpty {
+                Text("OUTRAS POSSIBILIDADES")
+                    .font(.caption).bold().foregroundStyle(gold)
+                ForEach(insight.alternatives,id:\.self) { possibility in
+                    Text("• " + possibility)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.78))
+                }
+            }
+        }
+    }
+
+    private var detailControls: some View {
+        VStack(alignment:.leading,spacing:8) {
+            HStack {
+                Text("Simular contra:")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+                Picker("Mãos aleatórias",selection:$opponents) {
+                    ForEach(1...5,id:\.self) { number in
+                        Text("\(number)").tag(number)
+                    }
+                }
+                .pickerStyle(.menu)
+                .tint(gold)
+                Spacer()
+                Button(showCorrections ? "Ocultar ajustes" : "Ajustar cartas") {
+                    withAnimation(.easeInOut(duration:0.2)) {
+                        showCorrections.toggle()
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(gold)
+            }
+            if showCorrections {
+                TextField("Sua mão: Ke Kd",text:$holeInput)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .textFieldStyle(.roundedBorder)
+                    .foregroundStyle(.black)
+                TextField("Mesa: Qd 7e 6c",text:$boardInput)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .textFieldStyle(.roundedBorder)
+                    .foregroundStyle(.black)
+                HStack {
+                    Text("a♣ c♥ e♠ d♦")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Limpar ajustes") {
+                        holeInput=""
+                        boardInput=""
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(gold)
+                }
+            }
+        }
+    }
+
+    private var detailShowdown: some View {
+        VStack(alignment:.leading,spacing:4) {
+            if !reader.visibleShowdown.isEmpty {
+                Text("Cartas reveladas publicamente:")
+                    .font(.caption)
+                    .foregroundStyle(gold)
+                Text(reader.visibleShowdown.map{
+                    $0.joined(separator:" ")
+                }.joined(separator:" • "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 
     /// Intentionally excluded from the playing interface.
