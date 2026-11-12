@@ -3,7 +3,7 @@ name: Build BrasaAssisten unsigned IPA
 on:
   workflow_dispatch:
   push:
-    branches: [main, 'fix/painel-risco-sequencia-flush']
+    branches: [main]
     paths:
       - 'BrasaAssisten/**'
       - 'project.yml'
