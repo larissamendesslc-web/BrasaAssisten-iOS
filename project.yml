@@ -6,8 +6,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.9.1"
-    CURRENT_PROJECT_VERSION: "10"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "11"
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
     ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     TARGETED_DEVICE_FAMILY: "1"
@@ -20,7 +20,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.brasaassisten.browser.beta
-        INFOPLIST_KEY_CFBundleDisplayName: BrasaAssisten Beta
+        INFOPLIST_KEY_CFBundleDisplayName: BrasaAssisten
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIRequiresFullScreen: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
