@@ -63,11 +63,18 @@ struct ContentView: View {
         )
     }
 
+    private var safety: RiskReport {
+        RiskInspector.assess(
+            hole:hole ?? [],
+            board:board ?? [],
+            uncertain:reader.boardNeedsReview && boardInput.isEmpty
+        )
+    }
+
     private var signal: Color {
-        switch insight.tone {
-        case "green": return Color(red:0.14,green:0.79,blue:0.38)
-        case "yellow": return Color(red:1.0,green:0.70,blue:0.18)
-        case "red": return Color(red:0.96,green:0.25,blue:0.29)
+        switch safety.level {
+        case "danger": return Color(red:0.88,green:0.30,blue:0.27)
+        case "blocked": return Color(red:0.46,green:0.46,blue:0.49)
         default: return gold
         }
     }
@@ -174,6 +181,7 @@ struct ContentView: View {
                         reviewNeeded: reader.boardNeedsReview,
                         tone: insight.tone,
                         action: insight.action,
+                        risk: safety,
                         viewportHeight: geometry.size.height,
                         collapsed: $sideCollapsed,
                         onLeft: $sideOnLeft,
@@ -274,20 +282,26 @@ struct ContentView: View {
     private var quickPanel: some View {
         VStack(alignment:.leading,spacing:9) {
             header
-            HStack(spacing:5) {
-                statusChip("DESISTIR","red")
-                statusChip("CAUTELA","yellow")
-                statusChip("FORTE","green")
+            HStack(spacing:6) {
+                Image(systemName:"exclamationmark.triangle.fill")
+                    .foregroundStyle(signal)
+                Text(safety.label)
+                    .font(.system(size:13,weight:.heavy))
+                    .foregroundStyle(.white)
+                Spacer(minLength:0)
             }
+            .padding(.vertical,7)
+            .padding(.horizontal,9)
+            .background(signal.opacity(0.24),in:RoundedRectangle(cornerRadius:8))
             HStack(alignment:.center,spacing:10) {
                 RoundedRectangle(cornerRadius:3)
                     .fill(signal)
                     .frame(width:5,height:50) // Never allow an infinite vertical shape.
                 VStack(alignment:.leading,spacing:3) {
-                    Text(insight.action)
+                    Text(safety.label)
                         .font(.system(size:18,weight:.heavy))
                         .lineLimit(1).minimumScaleFactor(0.75)
-                    Text(insight.title)
+                    Text(safety.hand)
                         .font(.system(size:12,weight:.medium))
                         .foregroundStyle(.white.opacity(0.78))
                         .lineLimit(1)
@@ -320,7 +334,7 @@ struct ContentView: View {
                     .font(.caption).foregroundStyle(.orange).lineLimit(1)
             }
 
-            Text(insight.reason)
+            Text(safety.explanation)
                 .font(.system(size:11))
                 .foregroundStyle(.white.opacity(0.76))
                 .lineLimit(2)
@@ -360,7 +374,7 @@ struct ContentView: View {
                 VStack(alignment:.leading,spacing:12) {
                     detailSummary
                     detailCards
-                    detailOdds
+                    // Random-opponent equity is withheld from live decision interface.
                     detailWarnings
                     detailControls
                     detailShowdown
@@ -382,19 +396,25 @@ struct ContentView: View {
 
     private var detailSummary: some View {
         VStack(alignment:.leading,spacing:9) {
-            HStack(spacing:5) {
-                statusChip("DESISTIR","red")
-                statusChip("CAUTELA","yellow")
-                statusChip("FORTE","green")
+            HStack(spacing:6) {
+                Image(systemName:"exclamationmark.triangle.fill")
+                    .foregroundStyle(signal)
+                Text(safety.label)
+                    .font(.system(size:13,weight:.heavy))
+                    .foregroundStyle(.white)
+                Spacer(minLength:0)
             }
+            .padding(.vertical,7)
+            .padding(.horizontal,9)
+            .background(signal.opacity(0.24),in:RoundedRectangle(cornerRadius:8))
             HStack(alignment:.top,spacing:10) {
                 RoundedRectangle(cornerRadius:3)
                     .fill(signal)
                     .frame(width:5,height:58)
                 VStack(alignment:.leading,spacing:3) {
-                    Text(insight.action).font(.title3).bold()
-                    Text(insight.title).font(.subheadline)
-                    Text(insight.reason)
+                    Text(safety.label).font(.title3).bold()
+                    Text(safety.hand).font(.subheadline)
+                    Text(safety.explanation)
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.78))
                 }
@@ -466,41 +486,26 @@ struct ContentView: View {
     }
 
     private var detailWarnings: some View {
-        VStack(alignment:.leading,spacing:5) {
-            if !insight.alerts.isEmpty {
-                Text("RISCOS DA MESA")
-                    .font(.caption).bold().foregroundStyle(gold)
-                ForEach(insight.alerts,id:\.self) { warning in
-                    Label(warning,systemImage:"exclamationmark.triangle")
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.78))
-                }
+        VStack(alignment:.leading,spacing:6) {
+            Text("RISCOS E LIMITES")
+                .font(.caption).bold().foregroundStyle(gold)
+            ForEach(safety.alerts,id:\.self) { warning in
+                Label(warning,systemImage:"exclamationmark.triangle")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.85))
             }
-            if !insight.alternatives.isEmpty {
-                Text("OUTRAS POSSIBILIDADES")
-                    .font(.caption).bold().foregroundStyle(gold)
-                ForEach(insight.alternatives,id:\.self) { possibility in
-                    Text("• " + possibility)
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.78))
-                }
-            }
+            Text("As cartas adversárias são desconhecidas. Não use este indicador como autorização para apostar.")
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.67))
         }
     }
 
     private var detailControls: some View {
         VStack(alignment:.leading,spacing:8) {
             HStack {
-                Text("Simular contra:")
+                Text("Conferência de leitura")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
-                Picker("Mãos aleatórias",selection:$opponents) {
-                    ForEach(1...5,id:\.self) { number in
-                        Text("\(number)").tag(number)
-                    }
-                }
-                .pickerStyle(.menu)
-                .tint(gold)
                 Spacer()
                 Button(showCorrections ? "Ocultar ajustes" : "Ajustar cartas") {
                     withAnimation(.easeInOut(duration:0.2)) {
